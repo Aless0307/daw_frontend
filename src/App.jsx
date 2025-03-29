@@ -4,7 +4,7 @@ function App() {
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:8003/api/saludo")
+    fetch("https://daw-backend.onrender.com/api/saludo")
       .then((res) => res.json())
       .then((data) => setMensaje(data.mensaje))
       .catch((err) => console.error("Error al conectar al backend:", err));
