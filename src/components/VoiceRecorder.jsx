@@ -8,6 +8,7 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
     const [timeLeft, setTimeLeft] = useState(5);
     const [recordingSuccess, setRecordingSuccess] = useState(false);
     const [error, setError] = useState('');
+    const [audioChunks, setAudioChunks] = useState([]);
 
     const PHRASE = "Hola, este es mi registro de voz para la autenticación";
     const RECORDING_TIME = 5; // segundos
@@ -32,12 +33,17 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
         e.preventDefault();
         setError('');
         setRecordingSuccess(false);
+        setAudioChunks([]);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const recorder = new MediaRecorder(stream);
             const chunks = [];
 
-            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.ondataavailable = (e) => {
+                chunks.push(e.data);
+                setAudioChunks(chunks);
+            };
+
             recorder.onstop = () => {
                 const blob = new Blob(chunks, { type: 'audio/wav' });
                 onRecordingComplete(blob);
@@ -62,6 +68,11 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
             mediaRecorder.stop();
             setIsRecording(false);
             onStopRecording();
+            
+            // Detener todos los tracks del stream
+            if (mediaRecorder.stream) {
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
         }
     };
 
@@ -72,26 +83,16 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
             return;
         }
 
-        const formData = new FormData();
-        formData.append('audio', await mediaRecorder.stream.getTracks()[0].stop().then(stream => stream.getAudioTracks()[0].clone().stop()), 'audio.wav');
-
         try {
-            const response = await fetch(`${config.API_URL}/auth/verify-voice`, {
-                method: 'POST',
-                body: formData,
-                credentials: 'include',
-                mode: 'cors'
-            });
-
-            if (response.ok) {
-                setRecordingSuccess(false);
-                setError('¡Grabación verificada con éxito!');
-            } else {
-                setError('Hubo un error al verificar la grabación. Por favor, inténtalo más tarde.');
-            }
+            // Crear un nuevo Blob con los chunks de audio guardados
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            // Llamar a onRecordingComplete con el blob para que el componente padre lo maneje
+            onRecordingComplete(audioBlob);
+            setRecordingSuccess(false);
+            setError('');
         } catch (err) {
-            setError('Hubo un error al enviar la grabación. Por favor, inténtalo más tarde.');
-            console.error('Error sending recording:', err);
+            console.error('Error al procesar la grabación:', err);
+            setError('Hubo un error al procesar la grabación. Por favor, inténtalo más tarde.');
         }
     };
 
@@ -106,7 +107,7 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
 
             {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600">{error}</p>
+                    <p className="text-sm text-red-600">{typeof error === 'string' ? error : 'Error desconocido'}</p>
                 </div>
             )}
 

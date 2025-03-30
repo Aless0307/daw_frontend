@@ -2,12 +2,10 @@ import axios from './axios';
 
 // Verificar si el token está expirado
 export const isTokenExpired = () => {
-    const user = localStorage.getItem('user');
-    if (!user) return true;
+    const token = localStorage.getItem('token');
+    if (!token) return true;
     
     try {
-        const userData = JSON.parse(user);
-        const token = userData.access_token;
         const payload = JSON.parse(atob(token.split('.')[1]));
         return payload.exp * 1000 < Date.now();
     } catch (error) {
@@ -17,12 +15,10 @@ export const isTokenExpired = () => {
 
 // Obtener tiempo restante hasta la expiración del token
 const getTokenExpirationTime = () => {
-    const user = localStorage.getItem('user');
-    if (!user) return 0;
+    const token = localStorage.getItem('token');
+    if (!token) return 0;
     
     try {
-        const userData = JSON.parse(user);
-        const token = userData.access_token;
         const payload = JSON.parse(atob(token.split('.')[1]));
         return payload.exp * 1000 - Date.now();
     } catch (error) {
@@ -48,16 +44,21 @@ export const checkAuth = () => {
 export const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/#/login';
 };
 
 // Función para hacer peticiones autenticadas
 export const makeAuthenticatedRequest = async (method, url, data = null) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No hay token de autenticación');
+
     try {
         const response = await axios({
             method,
             url,
-            data
+            data,
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
         });
         return response.data;
     } catch (error) {
@@ -68,7 +69,18 @@ export const makeAuthenticatedRequest = async (method, url, data = null) => {
     }
 };
 
+// Función para iniciar sesión
 export const login = (userData) => {
-    localStorage.setItem('token', userData.access_token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    if (!userData || !userData.token) {
+        console.error('Datos de usuario recibidos:', userData);
+        throw new Error('No se recibió token en la respuesta');
+    }
+    
+    try {
+        localStorage.setItem('token', userData.token);
+        return userData;
+    } catch (error) {
+        console.error('Error al guardar el token:', error);
+        throw error;
+    }
 }; 

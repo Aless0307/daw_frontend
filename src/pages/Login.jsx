@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import VoiceRecorder from '../components/VoiceRecorder';
+import VoiceLogin from '../components/VoiceLogin';
 import { config } from '../config';
 
 const Login = () => {
     const [isRegistering, setIsRegistering] = useState(false);
+    const [showVoiceLogin, setShowVoiceLogin] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
     const [isRecording, setIsRecording] = useState(false);
-    const [voiceRecording, setVoiceRecording] = useState(null);
+    const [audioBlob, setAudioBlob] = useState(null);
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -19,96 +21,85 @@ const Login = () => {
         e.preventDefault();
         setError('');
 
-        // Si está grabando, no permitir el envío del formulario
-        if (isRecording) {
-            setError('Por favor, detén la grabación antes de enviar el formulario');
-            return;
-        }
-
         try {
             if (isRegistering) {
-                console.log('Iniciando registro...');
-                console.log('Datos del formulario:', {
-                    username,
-                    email,
-                    password,
-                    hasVoiceRecording: voiceRecording !== null
-                });
-
                 const formData = new FormData();
                 formData.append('username', username);
                 formData.append('email', email);
                 formData.append('password', password);
                 
-                if (voiceRecording) {
-                    formData.append('voice', voiceRecording, 'recording.wav');
+                if (audioBlob) {
+                    formData.append('voice', audioBlob, 'voice.wav');
                 }
 
-                // Log del FormData
-                for (let pair of formData.entries()) {
-                    console.log('FormData entry:', pair[0], pair[1] instanceof Blob ? 'Blob' : pair[1]);
-                }
-
-                console.log('Enviando solicitud a:', `${config.API_URL}/auth/register`);
-                const response = await fetch(`${config.API_URL}/auth/register`, {
-                    method: 'POST',
-                    body: formData,
-                    ...config.fetchOptions
+                console.log('Enviando datos de registro:', {
+                    username,
+                    email,
+                    hasPassword: !!password,
+                    hasVoiceRecording: !!audioBlob
                 });
 
-                console.log('Respuesta recibida:', response.status);
-                const responseData = await response.json();
-                console.log('Datos de respuesta:', responseData);
+                const response = await fetch(`${config.API_URL}/auth/register`, {
+                    method: 'POST',
+                    body: formData
+                });
 
                 if (!response.ok) {
-                    throw new Error(responseData.detail || 'Error en el registro');
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Error en el registro');
                 }
 
-                // Si el registro es exitoso, cambiamos a modo login
+                const data = await response.json();
+                console.log('Registro exitoso:', data);
                 setIsRegistering(false);
-                setUsername('');
                 setEmail('');
                 setPassword('');
-                setVoiceRecording(null);
-                setError('');
-                alert('Registro exitoso. Por favor, inicia sesión.');
+                setUsername('');
+                setAudioBlob(null);
+                setError('Registro exitoso. Por favor, inicia sesión.');
             } else {
-                console.log('Iniciando sesión...');
+                const formData = new URLSearchParams();
+                formData.append('username', email);
+                formData.append('password', password);
+
                 const response = await fetch(`${config.API_URL}/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'Accept': 'application/json'
                     },
-                    body: new URLSearchParams({
-                        username: email,
-                        password: password,
-                    }),
-                    credentials: 'include',
-                    mode: 'cors'
+                    body: formData
                 });
 
-                console.log('Respuesta de login recibida:', response.status);
-                const data = await response.json();
-                console.log('Datos de login:', data);
-
                 if (!response.ok) {
-                    throw new Error(data.detail || 'Error en el inicio de sesión');
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Error en el inicio de sesión');
                 }
 
-                // Guardar el token y redirigir
-                await login(data);
-                console.log('Login exitoso, redirigiendo...');
+                const data = await response.json();
+                console.log('Respuesta del login:', data);
+                
+                if (!data.access_token) {
+                    throw new Error('No se recibió token en la respuesta');
+                }
+
+                const loginData = {
+                    token: data.access_token,
+                    username: data.username || email,
+                    email: data.email || email
+                };
+
+                console.log('Datos de login a enviar:', loginData);
+                login(loginData);
                 navigate('/home');
             }
         } catch (err) {
             console.error('Error:', err);
-            setError(err.message);
+            setError(err.message || 'Ha ocurrido un error');
         }
     };
 
     const handleVoiceRecordingComplete = (audioBlob) => {
-        setVoiceRecording(audioBlob);
+        setAudioBlob(audioBlob);
     };
 
     const handleStartRecording = () => {
@@ -119,122 +110,156 @@ const Login = () => {
         setIsRecording(false);
     };
 
+    const handleVoiceLoginSuccess = (token, user) => {
+        login({
+            token: token,
+            username: user.username,
+            email: user.email
+        });
+        navigate('/home');
+    };
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
-            <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-2xl transform transition-all hover:scale-[1.01]">
-                <div className="text-center">
-                    <h2 className="mt-6 text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">
-                        {isRegistering ? 'Crear Cuenta' : 'Bienvenido'}
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-white py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+                <div>
+                    <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                        {isRegistering ? 'Crear cuenta' : 'Iniciar sesión'}
                     </h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        {isRegistering 
-                            ? 'Regístrate para comenzar tu experiencia' 
-                            : 'Inicia sesión en tu cuenta'}
+                    <p className="mt-2 text-center text-sm text-gray-600">
+                        {isRegistering ? '¿Ya tienes una cuenta?' : '¿No tienes una cuenta?'}{' '}
+                        <button
+                            onClick={() => {
+                                setIsRegistering(!isRegistering);
+                                setShowVoiceLogin(false);
+                            }}
+                            className="font-medium text-indigo-600 hover:text-indigo-500"
+                        >
+                            {isRegistering ? 'Iniciar sesión' : 'Registrarse'}
+                        </button>
                     </p>
                 </div>
 
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                    <div className="space-y-4">
-                        {isRegistering && (
-                            <div className="relative">
-                                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                                    Nombre de usuario
-                                </label>
-                                <input
-                                    id="username"
-                                    type="text"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    required
-                                    disabled={isRecording}
-                                    className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                                    placeholder="Tu nombre de usuario"
-                                />
+                {!showVoiceLogin ? (
+                    <>
+                        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                            <div className="rounded-md shadow-sm -space-y-px">
+                                {isRegistering && (
+                                    <div>
+                                        <label htmlFor="username" className="sr-only">
+                                            Nombre de usuario
+                                        </label>
+                                        <input
+                                            id="username"
+                                            name="username"
+                                            type="text"
+                                            required
+                                            value={username}
+                                            onChange={(e) => setUsername(e.target.value)}
+                                            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                                            placeholder="Nombre de usuario"
+                                        />
+                                    </div>
+                                )}
+                                <div>
+                                    <label htmlFor="email" className="sr-only">
+                                        Correo electrónico
+                                    </label>
+                                    <input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${
+                                            isRegistering ? 'rounded-none' : 'rounded-t-md'
+                                        } focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
+                                        placeholder="Correo electrónico"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="password" className="sr-only">
+                                        Contraseña
+                                    </label>
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type="password"
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                                        placeholder="Contraseña"
+                                    />
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="text-red-500 text-sm text-center">
+                                    {error}
+                                </div>
+                            )}
+
+                            <div>
+                                <button
+                                    type="submit"
+                                    className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                >
+                                    {isRegistering ? 'Registrarse' : 'Iniciar sesión'}
+                                </button>
+                            </div>
+                        </form>
+
+                        {!isRegistering && (
+                            <div className="mt-6">
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-gray-300"></div>
+                                    </div>
+                                    <div className="relative flex justify-center text-sm">
+                                        <span className="px-2 bg-white text-gray-500">O</span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6">
+                                    <button
+                                        onClick={() => setShowVoiceLogin(true)}
+                                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                                    >
+                                        Iniciar sesión con voz
+                                    </button>
+                                </div>
                             </div>
                         )}
-
-                        <div className="relative">
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                                Email
-                            </label>
-                            <input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                disabled={isRecording}
-                                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                                placeholder="tu@email.com"
-                            />
-                        </div>
-
-                        <div className="relative">
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                                Contraseña
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                disabled={isRecording}
-                                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                                placeholder="••••••••"
-                            />
+                    </>
+                ) : (
+                    <div className="mt-8">
+                        <VoiceLogin onLoginSuccess={handleVoiceLoginSuccess} />
+                        <div className="mt-4 text-center">
+                            <button
+                                onClick={() => setShowVoiceLogin(false)}
+                                className="text-sm text-indigo-600 hover:text-indigo-500"
+                            >
+                                Volver al login normal
+                            </button>
                         </div>
                     </div>
+                )}
 
-                    {isRegistering && (
-                        <div className="mt-6 bg-gray-50 p-6 rounded-xl border border-gray-100">
-                            <VoiceRecorder
-                                onRecordingComplete={handleVoiceRecordingComplete}
-                                onStartRecording={handleStartRecording}
-                                onStopRecording={handleStopRecording}
-                            />
+                {isRegistering && (
+                    <div className="mt-8">
+                        <div className="text-center mb-4">
+                            <p className="text-sm text-gray-600">Grabación de voz (opcional)</p>
+                            <p className="text-xs text-gray-500">Te permitirá iniciar sesión usando tu voz en el futuro</p>
                         </div>
-                    )}
-
-                    {error && (
-                        <div className="rounded-lg bg-red-50 p-4 border border-red-100">
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="ml-3">
-                                    <h3 className="text-sm font-medium text-red-800">
-                                        {error}
-                                    </h3>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div>
-                        <button
-                            type="submit"
-                            disabled={isRecording}
-                            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isRegistering ? 'Crear cuenta' : 'Iniciar sesión'}
-                        </button>
+                        <VoiceRecorder
+                            onRecordingComplete={handleVoiceRecordingComplete}
+                            onStartRecording={handleStartRecording}
+                            onStopRecording={handleStopRecording}
+                        />
                     </div>
-
-                    <div className="text-center">
-                        <button
-                            type="button"
-                            onClick={() => setIsRegistering(!isRegistering)}
-                            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors duration-200"
-                        >
-                            {isRegistering
-                                ? '¿Ya tienes una cuenta? Inicia sesión'
-                                : '¿No tienes una cuenta? Regístrate'}
-                        </button>
-                    </div>
-                </form>
+                )}
             </div>
         </div>
     );

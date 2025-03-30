@@ -1,8 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [timeString, setTimeString] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -14,6 +16,16 @@ export default function Navbar() {
 
     return () => clearInterval(timer);
   }, []);
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const navItems = [
+    { path: '/home', label: 'INICIO' },
+    { path: '/acerca', label: 'ACERCA' },
+    { path: '/contact', label: 'CONTACTO' }
+  ];
 
   return (
     <nav className="relative bg-slate-900/90 backdrop-blur-md border-b border-white/10">
@@ -53,12 +65,7 @@ export default function Navbar() {
 
           {/* Navegación principal */}
           <div className="hidden md:flex items-center space-x-1">
-            {[
-              { path: '/', label: 'INICIO' },
-              { path: '/acerca', label: 'ACERCA' },
-              { path: '/contacto', label: 'CONTACTO' },
-              { path: '/login', label: 'ACCESO' }
-            ].map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -71,6 +78,12 @@ export default function Navbar() {
                 {item.label}
               </Link>
             ))}
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-lg font-mono text-sm transition-all duration-300 text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-red-500/30"
+            >
+              CERRAR SESIÓN
+            </button>
           </div>
 
           {/* Botón de menú móvil */}
@@ -88,12 +101,7 @@ export default function Navbar() {
         {isMenuOpen && (
           <div className="md:hidden bg-slate-900/95 backdrop-blur-md border-t border-white/10">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              {[
-                { path: '/', label: 'INICIO' },
-                { path: '/acerca', label: 'ACERCA' },
-                { path: '/contacto', label: 'CONTACTO' },
-                { path: '/login', label: 'ACCESO' }
-              ].map((item) => (
+              {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
@@ -107,6 +115,15 @@ export default function Navbar() {
                   {item.label}
                 </Link>
               ))}
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 rounded-lg font-mono text-sm transition-all duration-300 text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-red-500/30"
+              >
+                CERRAR SESIÓN
+              </button>
             </div>
             <div className="px-4 py-3 border-t border-white/10">
               <div className="flex items-center justify-between text-sm font-mono">

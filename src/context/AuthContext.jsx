@@ -16,26 +16,73 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const userData = localStorage.getItem('user');
-        if (userData && checkAuth()) {
-            setUser(JSON.parse(userData));
-        } else {
-            authLogout();
-        }
-        setLoading(false);
+        const initializeAuth = async () => {
+            try {
+                const userData = localStorage.getItem('user');
+                const token = localStorage.getItem('token');
+                
+                if (userData && token && checkAuth()) {
+                    const parsedUser = JSON.parse(userData);
+                    setUser(parsedUser);
+                } else {
+                    // Si no hay datos válidos, limpiar todo
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('token');
+                    setUser(null);
+                }
+            } catch (error) {
+                console.error('Error al inicializar la autenticación:', error);
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initializeAuth();
     }, []);
 
     const login = (userData) => {
-        authLogin(userData);
-        setUser({
-            username: userData.username,
-            email: userData.email
-        });
+        try {
+            // Guardar datos del usuario
+            localStorage.setItem('user', JSON.stringify({
+                username: userData.username,
+                email: userData.email
+            }));
+            
+            // Guardar token
+            if (userData.token) {
+                localStorage.setItem('token', userData.token);
+            }
+            
+            // Actualizar estado
+            setUser({
+                username: userData.username,
+                email: userData.email
+            });
+            
+            // Llamar a la función de login
+            authLogin(userData);
+        } catch (error) {
+            console.error('Error al iniciar sesión:', error);
+            throw error;
+        }
     };
 
     const logout = () => {
-        authLogout();
-        setUser(null);
+        try {
+            // Limpiar datos del localStorage
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            
+            // Limpiar estado
+            setUser(null);
+            
+            // Llamar a la función de logout
+            authLogout();
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            throw error;
+        }
     };
 
     if (loading) {
