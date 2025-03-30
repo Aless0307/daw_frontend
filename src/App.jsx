@@ -7,14 +7,12 @@ import Contacto from "./pages/Contacto";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import { useEffect } from "react";
-import { checkAuth, useTokenExpiration } from "./utils/auth";
+import { checkAuth } from "./utils/auth";
+import { AuthProvider } from "./context/AuthContext";
 
 // Componente para proteger rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
     const navigate = useNavigate();
-    
-    // Usar el hook de expiración del token
-    useTokenExpiration();
     
     useEffect(() => {
         if (!checkAuth()) {
@@ -27,7 +25,7 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
     return (
-        <>
+        <AuthProvider>
             <Navbar />
             <Routes>
                 <Route path="/inicio" element={<Inicio />} />       
@@ -45,7 +43,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/login" />} />
             </Routes>
             <Footer />
-        </>
+        </AuthProvider>
     );
 }
 

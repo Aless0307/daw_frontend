@@ -3,9 +3,11 @@ import axios from 'axios';
 import { API_URL } from "../url";
 import { useNavigate } from 'react-router-dom';
 import { checkAuth } from '../utils/auth';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [formData, setFormData] = useState({
         email: '',
@@ -51,8 +53,8 @@ export default function Login() {
                     password: formData.password
                 });
 
-                // Guardar datos del usuario en localStorage
-                localStorage.setItem('user', JSON.stringify(response.data));
+                // Usar el contexto para el login
+                login(response.data);
                 
                 // Redirigir a Home
                 navigate('/home');
