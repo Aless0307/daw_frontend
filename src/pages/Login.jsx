@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { API_URL } from "../url";
 
 export default function Login() {
     const [isLogin, setIsLogin] = useState(true);
@@ -34,7 +35,7 @@ export default function Login() {
                 // TODO: Implementar login
                 console.log('Login:', formData);
             } else {
-                const response = await axios.post('"https://daw-backend.onrender.com/register"', {
+                const response = await axios.post('${API_URL}/register', {
                     username: formData.username,
                     email: formData.email,
                     password: formData.password
