@@ -56,7 +56,7 @@ export const checkAuth = () => {
 // Función para cerrar sesión
 export const logout = () => {
     localStorage.removeItem('user');
-    window.location.href = '/login';
+    window.location.href = '/#/login';
 };
 
 // Función para hacer peticiones autenticadas
