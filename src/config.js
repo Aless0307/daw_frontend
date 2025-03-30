@@ -13,5 +13,7 @@ export const fetchOptions = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     },
-    mode: 'cors'
+    mode: 'cors',
+    cache: 'no-cache',
+    redirect: 'follow'
 }; 

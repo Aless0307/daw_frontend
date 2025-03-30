@@ -78,12 +78,15 @@ const Login = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json',
                     },
                     body: new URLSearchParams({
                         username: email,
                         password: password,
                     }),
-                    ...fetchOptions
+                    credentials: 'include',
+                    mode: 'cors',
+                    cache: 'no-cache'
                 });
 
                 console.log('Respuesta de login recibida:', response.status);
