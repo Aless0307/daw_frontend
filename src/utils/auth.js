@@ -1,4 +1,4 @@
-import axiosInstance from './axios';
+import axios from './axios';
 
 // Verificar si el token está expirado
 export const isTokenExpired = () => {
@@ -32,48 +32,32 @@ const getTokenExpirationTime = () => {
 
 // Verificar autenticación general
 export const checkAuth = () => {
-    const user = localStorage.getItem('user');
-    if (!user) return false;
-    
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+
     try {
-        const userData = JSON.parse(user);
-        const token = userData.access_token;
         const payload = JSON.parse(atob(token.split('.')[1]));
-        
-        // Verificar expiración
-        if (payload.exp * 1000 < Date.now()) {
-            localStorage.removeItem('user');
-            return false;
-        }
-        
-        return true;
+        const expiration = payload.exp * 1000; // Convertir a milisegundos
+        return Date.now() < expiration;
     } catch (error) {
-        localStorage.removeItem('user');
         return false;
     }
 };
 
 // Función para cerrar sesión
 export const logout = () => {
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/#/login';
 };
 
 // Función para hacer peticiones autenticadas
-export const makeAuthenticatedRequest = async (endpoint, method = 'GET', data = null) => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (!user) throw new Error('No autenticado');
-
-    const headers = {
-        'Authorization': `Bearer ${user.access_token}`
-    };
-    
+export const makeAuthenticatedRequest = async (method, url, data = null) => {
     try {
-        const response = await axiosInstance({
+        const response = await axios({
             method,
-            url: endpoint,
-            data,
-            headers
+            url,
+            data
         });
         return response.data;
     } catch (error) {
@@ -82,4 +66,9 @@ export const makeAuthenticatedRequest = async (endpoint, method = 'GET', data = 
         }
         throw error;
     }
+};
+
+export const login = (userData) => {
+    localStorage.setItem('token', userData.access_token);
+    localStorage.setItem('user', JSON.stringify(userData));
 }; 

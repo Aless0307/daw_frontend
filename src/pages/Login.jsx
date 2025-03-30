@@ -1,204 +1,241 @@
-import { useState, useEffect } from 'react';
-import axiosInstance from '../utils/axios';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { checkAuth } from '../utils/auth';
 import { useAuth } from '../context/AuthContext';
+import VoiceRecorder from '../components/VoiceRecorder';
+import { API_URL } from '../config';
 
-export default function Login() {
+const Login = () => {
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [username, setUsername] = useState('');
+    const [error, setError] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [voiceRecording, setVoiceRecording] = useState(null);
     const navigate = useNavigate();
     const { login } = useAuth();
-    const [isLogin, setIsLogin] = useState(true);
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        username: ''
-    });
-    const [errors, setErrors] = useState({});
-    const [message, setMessage] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Verificar si ya está autenticado
-    useEffect(() => {
-        if (checkAuth()) {
-            navigate('/home');
-        }
-    }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setErrors({});
-        setMessage('');
-        setIsLoading(true);
+        setError('');
 
-        if (!isLogin) {
-            // Validaciones para registro
-            if (formData.password !== formData.confirmPassword) {
-                setErrors({ confirmPassword: 'Las contraseñas no coinciden' });
-                setIsLoading(false);
-                return;
-            }
-            if (formData.password.length < 6) {
-                setErrors({ password: 'La contraseña debe tener al menos 6 caracteres' });
-                setIsLoading(false);
-                return;
-            }
+        // Si está grabando, no permitir el envío del formulario
+        if (isRecording) {
+            setError('Por favor, detén la grabación antes de enviar el formulario');
+            return;
         }
 
         try {
-            if (isLogin) {
-                const response = await axiosInstance.post('/login', {
-                    email: formData.email,
-                    password: formData.password
+            if (isRegistering) {
+                console.log('Iniciando registro...');
+                console.log('Datos del formulario:', {
+                    username,
+                    email,
+                    password,
+                    hasVoiceRecording: voiceRecording !== null
                 });
 
-                // Usar el contexto para el login
-                login(response.data);
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('email', email);
+                formData.append('password', password);
                 
-                // Redirigir a Home
+                if (voiceRecording) {
+                    formData.append('voice', voiceRecording, 'recording.wav');
+                }
+
+                // Log del FormData
+                for (let pair of formData.entries()) {
+                    console.log('FormData entry:', pair[0], pair[1] instanceof Blob ? 'Blob' : pair[1]);
+                }
+
+                console.log('Enviando solicitud a:', `${API_URL}/auth/register`);
+                const response = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                console.log('Respuesta recibida:', response.status);
+                const responseData = await response.json();
+                console.log('Datos de respuesta:', responseData);
+
+                if (!response.ok) {
+                    throw new Error(responseData.detail || 'Error en el registro');
+                }
+
+                // Si el registro es exitoso, cambiamos a modo login
+                setIsRegistering(false);
+                setUsername('');
+                setEmail('');
+                setPassword('');
+                setVoiceRecording(null);
+                setError('');
+                alert('Registro exitoso. Por favor, inicia sesión.');
+            } else {
+                console.log('Iniciando sesión...');
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        username: email,
+                        password: password,
+                    }),
+                    credentials: 'include'
+                });
+
+                console.log('Respuesta de login recibida:', response.status);
+                const data = await response.json();
+                console.log('Datos de login:', data);
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Error en el inicio de sesión');
+                }
+
+                // Guardar el token y redirigir
+                await login(data);
+                console.log('Login exitoso, redirigiendo...');
                 navigate('/home');
-            } else {
-                const response = await axiosInstance.post('/register', {
-                    username: formData.username,
-                    email: formData.email,
-                    password: formData.password
-                });
-                
-                setMessage(response.data.message);
-                setIsLogin(true);
-                setFormData({
-                    email: "",
-                    password: "",
-                    confirmPassword: "",
-                    username: ""
-                });
             }
-        } catch (error) {
-            if (error.response) {
-                setErrors({ submit: error.response.data.detail });
-            } else {
-                setErrors({ submit: 'Error al procesar la solicitud' });
-            }
-        } finally {
-            setIsLoading(false);
+        } catch (err) {
+            console.error('Error:', err);
+            setError(err.message);
         }
     };
 
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+    const handleVoiceRecordingComplete = (audioBlob) => {
+        setVoiceRecording(audioBlob);
     };
 
-    const toggleForm = () => {
-        setIsLogin(!isLogin);
-        setFormData({
-            email: '',
-            password: '',
-            confirmPassword: '',
-            username: ''
-        });
-        setErrors({});
-        setMessage('');
+    const handleStartRecording = () => {
+        setIsRecording(true);
+    };
+
+    const handleStopRecording = () => {
+        setIsRecording(false);
     };
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center">
-            <div className="w-full max-w-md mx-4 bg-gradient-to-b from-slate-900 to-black rounded-3xl p-8">
-                <h1 className="text-4xl font-bold text-white text-center mb-8">
-                    {isLogin ? 'Iniciar Sesión' : 'Registro'}
-                </h1>
-
-                {message && (
-                    <div className="mb-4 p-4 bg-green-500/20 border border-green-500 rounded-lg text-green-400 text-center">
-                        {message}
-                    </div>
-                )}
-
-                {errors.submit && (
-                    <div className="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-center">
-                        {errors.submit}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {!isLogin && (
-                        <div>
-                            <input
-                                type="text"
-                                name="username"
-                                value={formData.username}
-                                onChange={handleChange}
-                                placeholder="Nombre de usuario"
-                                className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
-                                required
-                            />
-                        </div>
-                    )}
-                    
-                    <div>
-                        <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            placeholder="Correo electrónico"
-                            className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <input
-                            type="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder="Contraseña"
-                            className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
-                            required
-                        />
-                        {errors.password && (
-                            <p className="mt-1 text-sm text-red-400">{errors.password}</p>
-                        )}
-                    </div>
-
-                    {!isLogin && (
-                        <div>
-                            <input
-                                type="password"
-                                name="confirmPassword"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                placeholder="Confirmar contraseña"
-                                className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
-                                required
-                            />
-                            {errors.confirmPassword && (
-                                <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>
-                            )}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className={`w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-800 hover:from-cyan-500 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-300 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        {isLoading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Registrarse')}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={toggleForm}
-                        className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg transition-colors duration-300"
-                    >
-                        {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
-                    </button>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
+            <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-2xl transform transition-all hover:scale-[1.01]">
+                <div className="text-center">
+                    <h2 className="mt-6 text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">
+                        {isRegistering ? 'Crear Cuenta' : 'Bienvenido'}
+                    </h2>
+                    <p className="mt-2 text-sm text-gray-600">
+                        {isRegistering 
+                            ? 'Regístrate para comenzar tu experiencia' 
+                            : 'Inicia sesión en tu cuenta'}
+                    </p>
                 </div>
+
+                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    <div className="space-y-4">
+                        {isRegistering && (
+                            <div className="relative">
+                                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                                    Nombre de usuario
+                                </label>
+                                <input
+                                    id="username"
+                                    type="text"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    required
+                                    disabled={isRecording}
+                                    className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                                    placeholder="Tu nombre de usuario"
+                                />
+                            </div>
+                        )}
+
+                        <div className="relative">
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                                Email
+                            </label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                disabled={isRecording}
+                                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                                placeholder="tu@email.com"
+                            />
+                        </div>
+
+                        <div className="relative">
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                                Contraseña
+                            </label>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                disabled={isRecording}
+                                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    </div>
+
+                    {isRegistering && (
+                        <div className="mt-6 bg-gray-50 p-6 rounded-xl border border-gray-100">
+                            <VoiceRecorder
+                                onRecordingComplete={handleVoiceRecordingComplete}
+                                onStartRecording={handleStartRecording}
+                                onStopRecording={handleStopRecording}
+                            />
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="rounded-lg bg-red-50 p-4 border border-red-100">
+                            <div className="flex">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-red-800">
+                                        {error}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <button
+                            type="submit"
+                            disabled={isRecording}
+                            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isRegistering ? 'Crear cuenta' : 'Iniciar sesión'}
+                        </button>
+                    </div>
+
+                    <div className="text-center">
+                        <button
+                            type="button"
+                            onClick={() => setIsRegistering(!isRegistering)}
+                            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors duration-200"
+                        >
+                            {isRegistering
+                                ? '¿Ya tienes una cuenta? Inicia sesión'
+                                : '¿No tienes una cuenta? Regístrate'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );
-} 
+};
+
+export default Login; 
