@@ -1,126 +1,174 @@
 import { useState } from 'react';
+import axios from 'axios';
 
 export default function Login() {
-    const [authMethod, setAuthMethod] = useState('facial'); // 'facial' o 'vocal'
+    const [isLogin, setIsLogin] = useState(true);
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        username: ''
+    });
+    const [errors, setErrors] = useState({});
+    const [message, setMessage] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErrors({});
+        setMessage('');
+
+        if (!isLogin) {
+            // Validaciones para registro
+            if (formData.password !== formData.confirmPassword) {
+                setErrors({ confirmPassword: 'Las contraseñas no coinciden' });
+                return;
+            }
+            if (formData.password.length < 6) {
+                setErrors({ password: 'La contraseña debe tener al menos 6 caracteres' });
+                return;
+            }
+        }
+
+        try {
+            if (isLogin) {
+                // TODO: Implementar login
+                console.log('Login:', formData);
+            } else {
+                const response = await axios.post('http://localhost:8003/register', {
+                    username: formData.username,
+                    email: formData.email,
+                    password: formData.password
+                });
+                setMessage(response.data.message);
+                setIsLogin(true);
+                setFormData({
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    username: ''
+                });
+            }
+        } catch (error) {
+            if (error.response) {
+                setErrors({ submit: error.response.data.detail });
+            } else {
+                setErrors({ submit: 'Error al procesar la solicitud' });
+            }
+        }
+    };
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+    };
+
+    const toggleForm = () => {
+        setIsLogin(!isLogin);
+        setFormData({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            username: ''
+        });
+        setErrors({});
+        setMessage('');
+    };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
-            <div className="relative bg-white/90 backdrop-blur-lg p-10 rounded-2xl shadow-2xl w-full max-w-md transform transition-all hover:scale-[1.02]">
-                {/* Elementos decorativos */}
-                <div className="absolute -top-4 -left-4 w-20 h-20 bg-blue-500 rounded-full opacity-20"></div>
-                <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-purple-500 rounded-full opacity-20"></div>
-                
-                <div className="relative z-10">
-                    <h1 className="text-4xl font-bold text-center mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                        Bienvenido
-                    </h1>
-                    <p className="text-center text-gray-600 mb-8">
-                        Inicia sesión de forma segura y accesible
-                    </p>
-                    
-                    {/* Selector de método de autenticación */}
-                    <div className="mb-8">
-                        <label className="block text-lg font-medium text-gray-700 mb-3">
-                            Elige tu método de autenticación
-                        </label>
-                        <div className="flex space-x-4">
-                            <button
-                                onClick={() => setAuthMethod('facial')}
-                                className={`flex-1 py-4 px-6 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 ${
-                                    authMethod === 'facial'
-                                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
-                                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200'
-                                }`}
-                                aria-label="Iniciar sesión con reconocimiento facial"
-                            >
-                                <div className="flex flex-col items-center">
-                                    <span className="text-2xl mb-2">👤</span>
-                                    <span className="text-sm">Facial</span>
-                                </div>
-                            </button>
-                            <button
-                                onClick={() => setAuthMethod('vocal')}
-                                className={`flex-1 py-4 px-6 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 ${
-                                    authMethod === 'vocal'
-                                        ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
-                                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200'
-                                }`}
-                                aria-label="Iniciar sesión con reconocimiento vocal"
-                            >
-                                <div className="flex flex-col items-center">
-                                    <span className="text-2xl mb-2">🎤</span>
-                                    <span className="text-sm">Vocal</span>
-                                </div>
-                            </button>
+        <div className="min-h-screen bg-black flex items-center justify-center">
+            <div className="w-full max-w-md mx-4 bg-gradient-to-b from-slate-900 to-black rounded-3xl p-8">
+                <h1 className="text-4xl font-bold text-white text-center mb-8">
+                    {isLogin ? 'Iniciar Sesión' : 'Registro'}
+                </h1>
+
+                {message && (
+                    <div className="mb-4 p-4 bg-green-500/20 border border-green-500 rounded-lg text-green-400 text-center">
+                        {message}
+                    </div>
+                )}
+
+                {errors.submit && (
+                    <div className="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-center">
+                        {errors.submit}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {!isLogin && (
+                        <div>
+                            <input
+                                type="text"
+                                name="username"
+                                value={formData.username}
+                                onChange={handleChange}
+                                placeholder="Nombre de usuario"
+                                className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
+                                required
+                            />
                         </div>
+                    )}
+                    
+                    <div>
+                        <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="Correo electrónico"
+                            className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
+                            required
+                        />
                     </div>
 
-                    {/* Área de autenticación */}
-                    <div className="space-y-6">
-                        {authMethod === 'facial' ? (
-                            <div className="text-center">
-                                <div className="relative w-48 h-48 mx-auto mb-6">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full opacity-20 animate-pulse"></div>
-                                    <div className="relative w-full h-full bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-blue-500">
-                                        <span className="text-5xl">👤</span>
-                                    </div>
-                                </div>
-                                <button
-                                    className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                                    aria-label="Iniciar reconocimiento facial"
-                                >
-                                    Iniciar Reconocimiento Facial
-                                </button>
-                                <p className="mt-4 text-sm text-gray-600">
-                                    Por favor, mire directamente a la cámara
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="text-center">
-                                <div className="relative w-48 h-48 mx-auto mb-6">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full opacity-20 animate-pulse"></div>
-                                    <div className="relative w-full h-full bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-purple-500">
-                                        <span className="text-5xl">🎤</span>
-                                    </div>
-                                </div>
-                                <button
-                                    className="w-full py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium hover:from-purple-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                                    aria-label="Iniciar reconocimiento vocal"
-                                >
-                                    Iniciar Reconocimiento Vocal
-                                </button>
-                                <p className="mt-4 text-sm text-gray-600">
-                                    Por favor, repita la frase que escuchará
-                                </p>
-                            </div>
+                    <div>
+                        <input
+                            type="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            placeholder="Contraseña"
+                            className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
+                            required
+                        />
+                        {errors.password && (
+                            <p className="mt-1 text-sm text-red-400">{errors.password}</p>
                         )}
                     </div>
 
-                    {/* Información de accesibilidad */}
-                    <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                        <h2 className="text-lg font-medium text-blue-800 mb-3 flex items-center">
-                            <span className="mr-2">♿</span>
-                            Características de Accesibilidad
-                        </h2>
-                        <ul className="text-sm text-blue-700 space-y-2">
-                            <li className="flex items-center">
-                                <span className="mr-2">✓</span>
-                                Compatible con lectores de pantalla
-                            </li>
-                            <li className="flex items-center">
-                                <span className="mr-2">✓</span>
-                                Alto contraste para mejor visibilidad
-                            </li>
-                            <li className="flex items-center">
-                                <span className="mr-2">✓</span>
-                                Navegación por teclado
-                            </li>
-                            <li className="flex items-center">
-                                <span className="mr-2">✓</span>
-                                Mensajes de retroalimentación claros
-                            </li>
-                        </ul>
-                    </div>
+                    {!isLogin && (
+                        <div>
+                            <input
+                                type="password"
+                                name="confirmPassword"
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                placeholder="Confirmar contraseña"
+                                className="w-full px-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
+                                required
+                            />
+                            {errors.confirmPassword && (
+                                <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>
+                            )}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-800 hover:from-cyan-500 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-300"
+                    >
+                        {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+                    </button>
+                </form>
+
+                <div className="mt-6 text-center">
+                    <button
+                        onClick={toggleForm}
+                        className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg transition-colors duration-300"
+                    >
+                        {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
+                    </button>
                 </div>
             </div>
         </div>
