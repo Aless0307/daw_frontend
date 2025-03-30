@@ -12,6 +12,7 @@ export const fetchOptions = {
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'Origin': 'https://daw-frontend.vercel.app'
     },
     mode: 'cors',
     cache: 'no-cache',

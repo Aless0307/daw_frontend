@@ -79,6 +79,7 @@ const Login = () => {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'Accept': 'application/json',
+                        'Origin': 'https://daw-frontend.vercel.app'
                     },
                     body: new URLSearchParams({
                         username: email,
