@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from './axios';
 import { API_URL } from '../url';
 import { useEffect } from 'react';
 
@@ -62,7 +62,7 @@ export const logout = () => {
 };
 
 // Configurar interceptor de Axios
-axios.interceptors.response.use(
+axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
@@ -82,9 +82,9 @@ export const makeAuthenticatedRequest = async (endpoint, method = 'GET', data = 
     };
     
     try {
-        const response = await axios({
+        const response = await axiosInstance({
             method,
-            url: `${API_URL}${endpoint}`,
+            url: endpoint,
             data,
             headers
         });

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from "../url";
+import axiosInstance from '../utils/axios';
 import { useNavigate } from 'react-router-dom';
 import { checkAuth } from '../utils/auth';
 import { useAuth } from '../context/AuthContext';
@@ -48,7 +47,7 @@ export default function Login() {
 
         try {
             if (isLogin) {
-                const response = await axios.post(`${API_URL}/login`, {
+                const response = await axiosInstance.post('/login', {
                     email: formData.email,
                     password: formData.password
                 });
@@ -59,7 +58,7 @@ export default function Login() {
                 // Redirigir a Home
                 navigate('/home');
             } else {
-                const response = await axios.post(`${API_URL}/register`, {
+                const response = await axiosInstance.post('/register', {
                     username: formData.username,
                     email: formData.email,
                     password: formData.password

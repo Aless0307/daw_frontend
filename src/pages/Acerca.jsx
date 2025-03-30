@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import axiosInstance from '../utils/axios';
 
 export default function Acerca() {
   const nombre = "Alessandro";
@@ -8,9 +9,8 @@ export default function Acerca() {
   useEffect(() => {
     const obtenerSaludo = async () => {
       try {
-        const response = await fetch('http://localhost:8003/api/saludo');
-        const data = await response.json();
-        setMensajeBackend(data.mensaje);
+        const response = await axiosInstance.get('/api/saludo');
+        setMensajeBackend(response.data.mensaje);
       } catch (error) {
         console.error('Error al obtener el saludo:', error);
         setMensajeBackend('Error al cargar el saludo');
