@@ -1,6 +1,4 @@
 import axiosInstance from './axios';
-import { API_URL } from '../url';
-import { useEffect } from 'react';
 
 // Verificar si el token está expirado
 export const isTokenExpired = () => {
@@ -61,17 +59,6 @@ export const logout = () => {
     window.location.href = '/login';
 };
 
-// Configurar interceptor de Axios
-axiosInstance.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            logout();
-        }
-        return Promise.reject(error);
-    }
-);
-
 // Función para hacer peticiones autenticadas
 export const makeAuthenticatedRequest = async (endpoint, method = 'GET', data = null) => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -95,32 +82,4 @@ export const makeAuthenticatedRequest = async (endpoint, method = 'GET', data = 
         }
         throw error;
     }
-};
-
-// Hook personalizado para manejar la expiración del token
-export const useTokenExpiration = () => {
-    useEffect(() => {
-        // Verificar inmediatamente al montar el componente
-        if (isTokenExpired()) {
-            logout();
-            return;
-        }
-
-        // Calcular tiempo restante hasta la expiración
-        const timeUntilExpiration = getTokenExpirationTime();
-        
-        // Si el token expirará en menos de 1 segundo, cerrar sesión inmediatamente
-        if (timeUntilExpiration <= 1000) {
-            logout();
-            return;
-        }
-
-        // Configurar un único temporizador que se activará justo cuando expire el token
-        const timer = setTimeout(() => {
-            logout();
-        }, timeUntilExpiration);
-
-        // Limpiar el temporizador al desmontar el componente
-        return () => clearTimeout(timer);
-    }, []);
 }; 
