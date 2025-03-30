@@ -1,18 +1,34 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { checkAuth, makeAuthenticatedRequest } from '../utils/auth';
 
 export default function Home() {
     const [userData, setUserData] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Obtener los datos del usuario del localStorage
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user) {
+        // Verificar autenticación
+        if (!checkAuth()) {
             navigate('/login');
             return;
         }
+
+        // Obtener datos del usuario
+        const user = JSON.parse(localStorage.getItem('user'));
         setUserData(user);
+
+        // Ejemplo de petición autenticada
+        const fetchUserData = async () => {
+            try {
+                // Aquí podrías hacer una petición autenticada para obtener datos adicionales
+                // const data = await makeAuthenticatedRequest('/api/user/profile');
+                // setUserData(prev => ({ ...prev, ...data }));
+            } catch (error) {
+                console.error('Error al obtener datos del usuario:', error);
+            }
+        };
+
+        fetchUserData();
     }, [navigate]);
 
     const handleLogout = () => {

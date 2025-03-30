@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from "../url";
 import { useNavigate } from 'react-router-dom';
+import { checkAuth } from '../utils/auth';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -15,6 +16,13 @@ export default function Login() {
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    // Verificar si ya está autenticado
+    useEffect(() => {
+        if (checkAuth()) {
+            navigate('/home');
+        }
+    }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

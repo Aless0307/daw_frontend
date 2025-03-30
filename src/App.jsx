@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Inicio from "./pages/Inicio";      
@@ -6,16 +6,23 @@ import Acerca from "./pages/Acerca";
 import Contacto from "./pages/Contacto";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
+import { useEffect } from "react";
+import { checkAuth, useTokenExpiration } from "./utils/auth";
 
 // Componente para proteger rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
-    const user = JSON.parse(localStorage.getItem('user'));
+    const navigate = useNavigate();
     
-    if (!user) {
-        return <Navigate to="/login" />;
-    }
+    // Usar el hook de expiración del token
+    useTokenExpiration();
     
-    return children;
+    useEffect(() => {
+        if (!checkAuth()) {
+            navigate('/login');
+        }
+    }, [navigate]);
+    
+    return checkAuth() ? children : null;
 };
 
 function App() {
