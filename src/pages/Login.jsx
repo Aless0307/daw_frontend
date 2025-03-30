@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import VoiceRecorder from '../components/VoiceRecorder';
-import { API_URL, fetchOptions } from '../config';
+import { config } from '../config';
 
 const Login = () => {
     const [isRegistering, setIsRegistering] = useState(false);
@@ -49,11 +49,11 @@ const Login = () => {
                     console.log('FormData entry:', pair[0], pair[1] instanceof Blob ? 'Blob' : pair[1]);
                 }
 
-                console.log('Enviando solicitud a:', `${API_URL}/auth/register`);
-                const response = await fetch(`${API_URL}/auth/register`, {
+                console.log('Enviando solicitud a:', `${config.API_URL}/auth/register`);
+                const response = await fetch(`${config.API_URL}/auth/register`, {
                     method: 'POST',
                     body: formData,
-                    ...fetchOptions
+                    ...config.fetchOptions
                 });
 
                 console.log('Respuesta recibida:', response.status);
@@ -74,7 +74,7 @@ const Login = () => {
                 alert('Registro exitoso. Por favor, inicia sesión.');
             } else {
                 console.log('Iniciando sesión...');
-                const response = await fetch(`${API_URL}/auth/login`, {
+                const response = await fetch(`${config.API_URL}/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

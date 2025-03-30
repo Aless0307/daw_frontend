@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import './VoiceRecorder.css';
+import { config } from '../config';
 
 const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording }) => {
     const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -63,6 +65,36 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
         }
     };
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!recordingSuccess) {
+            setError('Por favor, completa la grabación antes de enviar el formulario.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('audio', await mediaRecorder.stream.getTracks()[0].stop().then(stream => stream.getAudioTracks()[0].clone().stop()), 'audio.wav');
+
+        try {
+            const response = await fetch(`${config.API_URL}/auth/verify-voice`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include',
+                mode: 'cors'
+            });
+
+            if (response.ok) {
+                setRecordingSuccess(false);
+                setError('¡Grabación verificada con éxito!');
+            } else {
+                setError('Hubo un error al verificar la grabación. Por favor, inténtalo más tarde.');
+            }
+        } catch (err) {
+            setError('Hubo un error al enviar la grabación. Por favor, inténtalo más tarde.');
+            console.error('Error sending recording:', err);
+        }
+    };
+
     return (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Registro de Voz</h3>
@@ -103,6 +135,16 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
                         <span className="text-sm text-gray-600">Tiempo restante: {timeLeft}s</span>
                     </div>
                 )}
+            </div>
+
+            <div className="mt-4">
+                <button
+                    onClick={handleSubmit}
+                    className="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-700 text-white"
+                    type="submit"
+                >
+                    Enviar Grabación
+                </button>
             </div>
         </div>
     );

@@ -1,10 +1,21 @@
-// Configuración de URLs
-//export const API_URL = 'http://localhost:8003';  // URL local
-export const API_URL = 'https://daw-backend.onrender.com';  // URL de producción
+// Configuración del entorno
+const ENV = {
+    development: {
+        API_URL: 'http://localhost:8003',
+        FRONTEND_URL: 'http://localhost:5173'
+    },
+    production: {
+        API_URL: 'https://daw-backend.onrender.com',
+        FRONTEND_URL: 'https://daw-frontend.vercel.app'
+    }
+};
 
-// URL del frontend (para CORS)
-//export const FRONTEND_URL = 'http://localhost:5173';  // URL local
-export const FRONTEND_URL = 'https://daw-frontend.vercel.app';  // URL de producción
+// Seleccionar el entorno basado en la URL actual
+const isProduction = window.location.hostname !== 'localhost';
+const currentEnv = isProduction ? 'production' : 'development';
+
+// Exportar la configuración actual
+export const config = ENV[currentEnv];
 
 // Configuración de fetch
 export const fetchOptions = {
