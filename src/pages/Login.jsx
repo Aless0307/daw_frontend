@@ -78,16 +78,14 @@ const Login = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'Accept': 'application/json',
-                        'Origin': 'https://daw-frontend.vercel.app'
+                        'Accept': 'application/json'
                     },
                     body: new URLSearchParams({
                         username: email,
                         password: password,
                     }),
                     credentials: 'include',
-                    mode: 'cors',
-                    cache: 'no-cache'
+                    mode: 'cors'
                 });
 
                 console.log('Respuesta de login recibida:', response.status);
