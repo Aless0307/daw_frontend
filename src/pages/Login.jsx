@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import VoiceRecorder from '../components/VoiceRecorder';
-import { API_URL } from '../config';
+import { API_URL, fetchOptions } from '../config';
 
 const Login = () => {
     const [isRegistering, setIsRegistering] = useState(false);
@@ -53,7 +53,7 @@ const Login = () => {
                 const response = await fetch(`${API_URL}/auth/register`, {
                     method: 'POST',
                     body: formData,
-                    credentials: 'include'
+                    ...fetchOptions
                 });
 
                 console.log('Respuesta recibida:', response.status);
@@ -83,7 +83,7 @@ const Login = () => {
                         username: email,
                         password: password,
                     }),
-                    credentials: 'include'
+                    ...fetchOptions
                 });
 
                 console.log('Respuesta de login recibida:', response.status);
