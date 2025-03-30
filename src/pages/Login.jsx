@@ -34,7 +34,7 @@ export default function Login() {
                 // TODO: Implementar login
                 console.log('Login:', formData);
             } else {
-                const response = await axios.post('http://localhost:8003/register', {
+                const response = await axios.post('"https://daw-backend.onrender.com/register"', {
                     username: formData.username,
                     email: formData.email,
                     password: formData.password
