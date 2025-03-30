@@ -32,22 +32,28 @@ export default function Login() {
 
         try {
             if (isLogin) {
-                // TODO: Implementar login
-                console.log('Login:', formData);
+              // Aquí puedes implementar el login más adelante
+              console.log("Login:", formData);
             } else {
-                const response = await axios.post('${API_URL}/register', {
-                    username: formData.username,
-                    email: formData.email,
-                    password: formData.password
-                });
-                setMessage(response.data.message);
-                setIsLogin(true);
-                setFormData({
-                    email: '',
-                    password: '',
-                    confirmPassword: '',
-                    username: ''
-                });
+              const response = await axios.post(`${API_URL}/register`, {
+                username: formData.username,
+                email: formData.email,
+                password: formData.password
+              });
+          
+              // Mostrar mensaje del backend
+              setMessage(response.data.message);
+          
+              // Cambiar al modo login automáticamente
+              setIsLogin(true);
+          
+              // Limpiar el formulario
+              setFormData({
+                email: "",
+                password: "",
+                confirmPassword: "",
+                username: ""
+              });
             }
         } catch (error) {
             if (error.response) {
