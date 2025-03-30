@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { API_URL } from "../url";
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
+    const navigate = useNavigate();
     const [isLogin, setIsLogin] = useState(true);
     const [formData, setFormData] = useState({
         email: '',
@@ -12,48 +14,55 @@ export default function Login() {
     });
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrors({});
         setMessage('');
+        setIsLoading(true);
 
         if (!isLogin) {
             // Validaciones para registro
             if (formData.password !== formData.confirmPassword) {
                 setErrors({ confirmPassword: 'Las contraseñas no coinciden' });
+                setIsLoading(false);
                 return;
             }
             if (formData.password.length < 6) {
                 setErrors({ password: 'La contraseña debe tener al menos 6 caracteres' });
+                setIsLoading(false);
                 return;
             }
         }
 
         try {
             if (isLogin) {
-              // Aquí puedes implementar el login más adelante
-              console.log("Login:", formData);
+                const response = await axios.post(`${API_URL}/login`, {
+                    email: formData.email,
+                    password: formData.password
+                });
+
+                // Guardar datos del usuario en localStorage
+                localStorage.setItem('user', JSON.stringify(response.data));
+                
+                // Redirigir a Home
+                navigate('/home');
             } else {
-              const response = await axios.post(`${API_URL}/register`, {
-                username: formData.username,
-                email: formData.email,
-                password: formData.password
-              });
-          
-              // Mostrar mensaje del backend
-              setMessage(response.data.message);
-          
-              // Cambiar al modo login automáticamente
-              setIsLogin(true);
-          
-              // Limpiar el formulario
-              setFormData({
-                email: "",
-                password: "",
-                confirmPassword: "",
-                username: ""
-              });
+                const response = await axios.post(`${API_URL}/register`, {
+                    username: formData.username,
+                    email: formData.email,
+                    password: formData.password
+                });
+                
+                setMessage(response.data.message);
+                setIsLogin(true);
+                setFormData({
+                    email: "",
+                    password: "",
+                    confirmPassword: "",
+                    username: ""
+                });
             }
         } catch (error) {
             if (error.response) {
@@ -61,6 +70,8 @@ export default function Login() {
             } else {
                 setErrors({ submit: 'Error al procesar la solicitud' });
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -163,9 +174,10 @@ export default function Login() {
 
                     <button
                         type="submit"
-                        className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-800 hover:from-cyan-500 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-300"
+                        disabled={isLoading}
+                        className={`w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-800 hover:from-cyan-500 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-300 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+                        {isLoading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Registrarse')}
                     </button>
                 </form>
 
