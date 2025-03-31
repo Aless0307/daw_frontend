@@ -111,6 +111,14 @@ const Login = () => {
     };
 
     const handleVoiceLoginSuccess = (token, user) => {
+        console.log('Login con voz exitoso:', token, user);
+        
+        if (!token || !user) {
+            setError('Datos de autenticación incompletos');
+            console.error('Error: token o user undefined', { token, user });
+            return;
+        }
+        
         login({
             token: token,
             username: user.username,

@@ -51,11 +51,14 @@ const VoiceLogin = ({ onLoginSuccess }) => {
 
     const handleSubmit = async (audioBlob) => {
         const formData = new FormData();
-        formData.append('audio', audioBlob, 'voice.wav');
+        formData.append('voice', audioBlob, 'voice.wav');
         formData.append('email', email);
 
         try {
             console.log('Enviando grabación de voz para login...');
+            console.log('URL del API:', `${config.API_URL}/auth/login-voice`);
+            console.log('Email:', email);
+            
             const response = await fetch(`${config.API_URL}/auth/login-voice`, {
                 method: 'POST',
                 body: formData
@@ -69,8 +72,13 @@ const VoiceLogin = ({ onLoginSuccess }) => {
             const data = await response.json();
             console.log('Respuesta del login con voz:', data);
             
-            if (data.access_token && data.user) {
-                onLoginSuccess(data.access_token, data.user);
+            if (data.access_token) {
+                const userData = {
+                    username: data.username || email.split('@')[0],
+                    email: data.email || email
+                };
+                
+                onLoginSuccess(data.access_token, userData);
             } else {
                 throw new Error('No se recibieron los datos necesarios del servidor');
             }
