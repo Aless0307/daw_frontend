@@ -27,6 +27,12 @@ const instance = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    },
+    withCredentials: true,
+    timeout: 10000, // 10 segundos
+    validateStatus: function (status) {
+        return status >= 200 && status < 500; // Aceptar cualquier status < 500
     }
 });
 
@@ -37,6 +43,10 @@ instance.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        
+        // Asegurar que withCredentials esté configurado
+        config.withCredentials = true;
+        
         logRequest(config);
         return config;
     },
@@ -54,12 +64,21 @@ instance.interceptors.response.use(
     },
     (error) => {
         logError(error);
-        if (error.response?.status === 401) {
+        
+        // Manejar diferentes tipos de errores
+        if (error.code === 'ECONNABORTED') {
+            console.error('[AXIOS] Tiempo de espera agotado');
+        } else if (error.code === 'ERR_NETWORK') {
+            console.error('[AXIOS] Error de red');
+        } else if (error.response?.status === 401) {
             console.log(`[${new Date().toISOString()}] Sesión expirada, redirigiendo a login`);
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/#/login';
+        } else if (error.response?.status === 502) {
+            console.error('[AXIOS] Error de servidor (502)');
         }
+        
         return Promise.reject(error);
     }
 );

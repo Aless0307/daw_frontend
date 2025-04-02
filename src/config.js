@@ -23,9 +23,23 @@ export const fetchOptions = {
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Origin': 'https://daw-frontend.vercel.app'
     },
     mode: 'cors',
     cache: 'no-cache',
-    redirect: 'follow'
+    redirect: 'follow',
+    timeout: 10000 // 10 segundos
+};
+
+// Función para verificar la disponibilidad del backend
+export const checkBackendAvailability = async () => {
+    try {
+        const response = await fetch(`${config.API_URL}/`, {
+            ...fetchOptions,
+            method: 'HEAD'
+        });
+        return response.ok;
+    } catch (error) {
+        console.error('[CONFIG] Error al verificar disponibilidad del backend:', error);
+        return false;
+    }
 }; 
