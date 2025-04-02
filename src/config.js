@@ -5,7 +5,7 @@ const ENV = {
         FRONTEND_URL: 'http://localhost:5173'
     },
     production: {
-        API_URL: 'https://daw-backend.onrender.com',
+        API_URL: 'https://dawbackend-production.up.railway.app',
         FRONTEND_URL: 'https://daw-frontend.vercel.app'
     }
 };
