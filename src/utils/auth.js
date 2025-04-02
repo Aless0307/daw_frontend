@@ -1,14 +1,33 @@
 import axios from './axios';
 
+// Función para logging
+const logAuth = (message, data = null) => {
+    const timestamp = new Date().toISOString();
+    if (data) {
+        console.log(`[${timestamp}] AUTH_UTILS: ${message}`, data);
+    } else {
+        console.log(`[${timestamp}] AUTH_UTILS: ${message}`);
+    }
+};
+
 // Verificar si el token está expirado
 export const isTokenExpired = () => {
     const token = localStorage.getItem('token');
-    if (!token) return true;
+    if (!token) {
+        logAuth('Token no encontrado');
+        return true;
+    }
     
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.exp * 1000 < Date.now();
+        const isExpired = payload.exp * 1000 < Date.now();
+        logAuth('Verificación de expiración de token', { 
+            expiraEn: new Date(payload.exp * 1000).toISOString(),
+            estaExpirado: isExpired
+        });
+        return isExpired;
     } catch (error) {
+        console.error('[AUTH_UTILS] Error al verificar expiración del token:', error);
         return true;
     }
 };
@@ -16,12 +35,21 @@ export const isTokenExpired = () => {
 // Obtener tiempo restante hasta la expiración del token
 const getTokenExpirationTime = () => {
     const token = localStorage.getItem('token');
-    if (!token) return 0;
+    if (!token) {
+        logAuth('Token no encontrado para calcular tiempo de expiración');
+        return 0;
+    }
     
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.exp * 1000 - Date.now();
+        const remainingTime = payload.exp * 1000 - Date.now();
+        logAuth('Tiempo restante hasta expiración del token', { 
+            tiempoRestanteMs: remainingTime,
+            expiraEn: new Date(payload.exp * 1000).toISOString()
+        });
+        return remainingTime;
     } catch (error) {
+        console.error('[AUTH_UTILS] Error al calcular tiempo de expiración del token:', error);
         return 0;
     }
 };
@@ -29,58 +57,108 @@ const getTokenExpirationTime = () => {
 // Verificar autenticación general
 export const checkAuth = () => {
     const token = localStorage.getItem('token');
-    if (!token) return false;
+    if (!token) {
+        logAuth('Token no encontrado para verificación de autenticación');
+        return false;
+    }
 
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const expiration = payload.exp * 1000; // Convertir a milisegundos
-        return Date.now() < expiration;
+        const isValid = Date.now() < expiration;
+        
+        logAuth('Verificación de autenticación', { 
+            expiraEn: new Date(expiration).toISOString(),
+            esValido: isValid
+        });
+        
+        return isValid;
     } catch (error) {
+        console.error('[AUTH_UTILS] Error al verificar autenticación:', error);
         return false;
     }
 };
 
 // Función para cerrar sesión
 export const logout = () => {
+    logAuth('Cerrando sesión');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    logAuth('Sesión cerrada exitosamente');
 };
 
 // Función para hacer peticiones autenticadas
 export const makeAuthenticatedRequest = async (method, url, data = null) => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('No hay token de autenticación');
-
+    logAuth('Iniciando petición autenticada', { method, url });
+    
     try {
+        // Verificar si el token está expirado
+        if (isTokenExpired()) {
+            logAuth('Token expirado, redirigiendo a login');
+            logout();
+            window.location.href = '/#/login';
+            return null;
+        }
+        
+        // Obtener token
+        const token = localStorage.getItem('token');
+        
+        // Configurar headers
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+        
+        // Realizar petición
         const response = await axios({
             method,
             url,
             data,
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers
         });
+        
+        logAuth('Petición autenticada exitosa', { 
+            method, 
+            url, 
+            status: response.status 
+        });
+        
         return response.data;
     } catch (error) {
+        console.error('[AUTH_UTILS] Error en petición autenticada:', error);
+        logAuth('Error en petición autenticada', { 
+            method, 
+            url, 
+            error: error.message 
+        });
+        
         if (error.response?.status === 401) {
+            logAuth('Error de autenticación (401), redirigiendo a login');
             logout();
+            window.location.href = '/#/login';
         }
+        
         throw error;
     }
 };
 
 // Función para iniciar sesión
-export const login = (userData) => {
-    if (!userData || !userData.token) {
-        console.error('Datos de usuario recibidos:', userData);
-        throw new Error('No se recibió token en la respuesta');
-    }
+export const login = async (credentials) => {
+    logAuth('Iniciando proceso de login', { email: credentials.email });
     
     try {
-        localStorage.setItem('token', userData.token);
-        return userData;
+        const response = await axios.post('/auth/login', credentials);
+        logAuth('Login exitoso', { 
+            email: credentials.email,
+            status: response.status
+        });
+        return response.data;
     } catch (error) {
-        console.error('Error al guardar el token:', error);
+        console.error('[AUTH_UTILS] Error durante el login:', error);
+        logAuth('Error durante el login', { 
+            email: credentials.email,
+            error: error.message
+        });
         throw error;
     }
 }; 

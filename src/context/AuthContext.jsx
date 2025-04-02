@@ -1,11 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { checkAuth, login as authLogin, logout as authLogout } from '../utils/auth';
 
+// Función para logging
+const logAuth = (message, data = null) => {
+    const timestamp = new Date().toISOString();
+    if (data) {
+        console.log(`[${timestamp}] AUTH: ${message}`, data);
+    } else {
+        console.log(`[${timestamp}] AUTH: ${message}`);
+    }
+};
+
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
+        console.error('[AUTH] Error: useAuth debe ser usado dentro de un AuthProvider');
         throw new Error('useAuth debe ser usado dentro de un AuthProvider');
     }
     return context;
@@ -17,24 +28,36 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const initializeAuth = async () => {
+            logAuth('Inicializando autenticación');
             try {
                 const userData = localStorage.getItem('user');
                 const token = localStorage.getItem('token');
                 
+                logAuth('Datos de autenticación encontrados', { 
+                    hasUserData: !!userData, 
+                    hasToken: !!token 
+                });
+                
                 if (userData && token && checkAuth()) {
                     const parsedUser = JSON.parse(userData);
+                    logAuth('Usuario autenticado encontrado', { 
+                        username: parsedUser.username,
+                        email: parsedUser.email
+                    });
                     setUser(parsedUser);
                 } else {
+                    logAuth('No se encontraron datos de autenticación válidos, limpiando almacenamiento');
                     // Si no hay datos válidos, limpiar todo
                     localStorage.removeItem('user');
                     localStorage.removeItem('token');
                     setUser(null);
                 }
             } catch (error) {
-                console.error('Error al inicializar la autenticación:', error);
+                console.error('[AUTH] Error al inicializar la autenticación:', error);
                 setUser(null);
             } finally {
                 setLoading(false);
+                logAuth('Inicialización de autenticación completada', { loading: false });
             }
         };
 
@@ -42,6 +65,11 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = (userData) => {
+        logAuth('Iniciando proceso de login', { 
+            username: userData.username,
+            email: userData.email
+        });
+        
         try {
             // Guardar datos del usuario
             localStorage.setItem('user', JSON.stringify({
@@ -50,51 +78,49 @@ export const AuthProvider = ({ children }) => {
             }));
             
             // Guardar token
-            if (userData.token) {
-                localStorage.setItem('token', userData.token);
-            }
+            localStorage.setItem('token', userData.access_token);
             
-            // Actualizar estado
+            logAuth('Login exitoso', { 
+                username: userData.username,
+                email: userData.email
+            });
+            
             setUser({
                 username: userData.username,
                 email: userData.email
             });
             
-            // Llamar a la función de login
-            authLogin(userData);
+            return true;
         } catch (error) {
-            console.error('Error al iniciar sesión:', error);
-            throw error;
+            console.error('[AUTH] Error durante el login:', error);
+            logAuth('Error durante el login', { error: error.message });
+            return false;
         }
     };
 
     const logout = () => {
+        logAuth('Iniciando proceso de logout');
         try {
-            // Limpiar datos del localStorage
-            localStorage.removeItem('user');
+            // Limpiar datos de autenticación
             localStorage.removeItem('token');
-            
-            // Limpiar estado
+            localStorage.removeItem('user');
             setUser(null);
-            
-            // Llamar a la función de logout
-            authLogout();
+            logAuth('Logout exitoso');
         } catch (error) {
-            console.error('Error al cerrar sesión:', error);
-            throw error;
+            console.error('[AUTH] Error durante el logout:', error);
+            logAuth('Error durante el logout', { error: error.message });
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-            </div>
-        );
-    }
+    const value = {
+        user,
+        loading,
+        login,
+        logout
+    };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );
