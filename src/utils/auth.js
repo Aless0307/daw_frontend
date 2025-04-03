@@ -1,5 +1,7 @@
 import axios from './axios';
 
+const AUTH_KEY = 'auth_data';
+
 // Función para logging
 const logAuth = (message, data = null) => {
     const timestamp = new Date().toISOString();
@@ -8,6 +10,48 @@ const logAuth = (message, data = null) => {
     } else {
         console.log(`[${timestamp}] AUTH_UTILS: ${message}`);
     }
+};
+
+export const setAuthData = (data) => {
+    try {
+        localStorage.setItem(AUTH_KEY, JSON.stringify(data));
+        return true;
+    } catch (error) {
+        console.error('Error al guardar datos de autenticación:', error);
+        return false;
+    }
+};
+
+export const getAuthData = () => {
+    try {
+        const data = localStorage.getItem(AUTH_KEY);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        console.error('Error al obtener datos de autenticación:', error);
+        return null;
+    }
+};
+
+export const clearAuthData = () => {
+    try {
+        localStorage.removeItem(AUTH_KEY);
+        localStorage.removeItem('token');
+        return true;
+    } catch (error) {
+        console.error('Error al limpiar datos de autenticación:', error);
+        return false;
+    }
+};
+
+export const isAuthenticated = () => {
+    const authData = getAuthData();
+    if (!authData) return false;
+
+    const { token, expiresAt } = authData;
+    if (!token || !expiresAt) return false;
+
+    const now = new Date().getTime();
+    return now < expiresAt;
 };
 
 // Verificar si el token está expirado
@@ -80,11 +124,15 @@ export const checkAuth = () => {
 };
 
 // Función para cerrar sesión
-export const logout = () => {
-    logAuth('Cerrando sesión');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    logAuth('Sesión cerrada exitosamente');
+export const logout = async () => {
+    try {
+        await axios.post('/auth/logout');
+        clearAuthData();
+        return { success: true };
+    } catch (error) {
+        console.error('Error en logout:', error);
+        return { success: false, error: error.response?.data?.message || 'Error al cerrar sesión' };
+    }
 };
 
 // Función para hacer peticiones autenticadas
@@ -143,22 +191,32 @@ export const makeAuthenticatedRequest = async (method, url, data = null) => {
 };
 
 // Función para iniciar sesión
-export const login = async (credentials) => {
-    logAuth('Iniciando proceso de login', { email: credentials.email });
-    
+export const login = async (email, password) => {
     try {
-        const response = await axios.post('/auth/login', credentials);
-        logAuth('Login exitoso', { 
-            email: credentials.email,
-            status: response.status
-        });
-        return response.data;
+        const response = await axios.post('/auth/login', { email, password });
+        const { token, user } = response.data;
+        
+        const expiresAt = new Date().getTime() + (60 * 60 * 1000); // 1 hora
+        setAuthData({ token, user, expiresAt });
+        
+        return { success: true, user };
     } catch (error) {
-        console.error('[AUTH_UTILS] Error durante el login:', error);
-        logAuth('Error durante el login', { 
-            email: credentials.email,
-            error: error.message
-        });
-        throw error;
+        console.error('Error en login:', error);
+        return { success: false, error: error.response?.data?.message || 'Error al iniciar sesión' };
+    }
+};
+
+export const register = async (userData) => {
+    try {
+        const response = await axios.post('/auth/register', userData);
+        const { token, user } = response.data;
+        
+        const expiresAt = new Date().getTime() + (60 * 60 * 1000); // 1 hora
+        setAuthData({ token, user, expiresAt });
+        
+        return { success: true, user };
+    } catch (error) {
+        console.error('Error en registro:', error);
+        return { success: false, error: error.response?.data?.message || 'Error al registrar usuario' };
     }
 }; 
