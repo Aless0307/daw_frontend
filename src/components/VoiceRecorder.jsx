@@ -31,21 +31,34 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
 
     const handleStartRecording = async (e) => {
         e.preventDefault();
+        console.log('Iniciando grabación...');
         setError('');
         setRecordingSuccess(false);
         setAudioChunks([]);
         try {
+            console.log('Solicitando acceso al micrófono...');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log('Acceso al micrófono concedido');
+            
             const recorder = new MediaRecorder(stream);
             const chunks = [];
 
             recorder.ondataavailable = (e) => {
+                console.log('Datos de audio disponibles:', {
+                    size: e.data.size,
+                    type: e.data.type
+                });
                 chunks.push(e.data);
                 setAudioChunks(chunks);
             };
 
             recorder.onstop = () => {
+                console.log('Grabación detenida, procesando audio...');
                 const blob = new Blob(chunks, { type: 'audio/wav' });
+                console.log('Blob creado:', {
+                    size: blob.size,
+                    type: blob.type
+                });
                 onRecordingComplete(blob);
                 setRecordingSuccess(true);
                 stream.getTracks().forEach(track => track.stop());
@@ -56,14 +69,16 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
             setIsRecording(true);
             setTimeLeft(RECORDING_TIME);
             onStartRecording();
+            console.log('Grabación iniciada correctamente');
         } catch (err) {
+            console.error('Error al acceder al micrófono:', err);
             setError('Error al acceder al micrófono. Por favor, asegúrate de que tienes un micrófono conectado y has dado los permisos necesarios.');
-            console.error('Error accessing microphone:', err);
         }
     };
 
     const handleStopRecording = (e) => {
         if (e) e.preventDefault();
+        console.log('Deteniendo grabación...');
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
             setIsRecording(false);
@@ -73,23 +88,32 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording 
             if (mediaRecorder.stream) {
                 mediaRecorder.stream.getTracks().forEach(track => track.stop());
             }
+            console.log('Grabación detenida correctamente');
+        } else {
+            console.log('No hay grabación activa para detener');
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log('Procesando grabación...');
         if (!recordingSuccess) {
+            console.log('Error: grabación no completada');
             setError('Por favor, completa la grabación antes de enviar el formulario.');
             return;
         }
 
         try {
-            // Crear un nuevo Blob con los chunks de audio guardados
+            console.log('Creando blob final...');
             const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            // Llamar a onRecordingComplete con el blob para que el componente padre lo maneje
+            console.log('Blob final creado:', {
+                size: audioBlob.size,
+                type: audioBlob.type
+            });
             onRecordingComplete(audioBlob);
             setRecordingSuccess(false);
             setError('');
+            console.log('Grabación procesada correctamente');
         } catch (err) {
             console.error('Error al procesar la grabación:', err);
             setError('Hubo un error al procesar la grabación. Por favor, inténtalo más tarde.');

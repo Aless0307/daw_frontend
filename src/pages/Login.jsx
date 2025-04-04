@@ -29,7 +29,7 @@ const Login = () => {
                 formData.append('password', password);
                 
                 if (audioBlob) {
-                    formData.append('voice', audioBlob, 'voice.wav');
+                    formData.append('voice_recording', audioBlob, 'voice.wav');
                 }
 
                 console.log('Enviando datos de registro:', {
