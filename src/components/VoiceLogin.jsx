@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { config } from '../config';
@@ -9,8 +9,39 @@ const VoiceLogin = ({ onLoginSuccess }) => {
     const [error, setError] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [audioBlob, setAudioBlob] = useState(null);
+    const [modelStatus, setModelStatus] = useState('pending'); // 'pending', 'warming', 'ready', 'failed'
     const navigate = useNavigate();
     const { login } = useAuth();
+
+    // Precalentar el modelo de voz cuando el componente se monta
+    useEffect(() => {
+        const warmupModel = async () => {
+            try {
+                setModelStatus('warming');
+                console.log('Precalentando modelo de voz...');
+                
+                const response = await fetch(`${config.API_URL}/voice/warmup`, {
+                    method: 'GET'
+                });
+                
+                const data = await response.json();
+                console.log('Respuesta del warmup:', data);
+                
+                if (data.model_loaded) {
+                    setModelStatus('ready');
+                    console.log('Modelo de voz listo para usar');
+                } else {
+                    setModelStatus('failed');
+                    console.error('Error al precalentar el modelo de voz:', data.message);
+                }
+            } catch (error) {
+                console.error('Error al precalentar el modelo:', error);
+                setModelStatus('failed');
+            }
+        };
+        
+        warmupModel();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -109,6 +140,26 @@ const VoiceLogin = ({ onLoginSuccess }) => {
         setAudioBlob(blob);
     };
 
+    // Mostrar estado de carga del modelo
+    const renderModelStatus = () => {
+        switch (modelStatus) {
+            case 'warming':
+                return (
+                    <div className="text-center p-2 bg-yellow-100 text-yellow-800 rounded mb-4">
+                        Preparando sistema de reconocimiento de voz...
+                    </div>
+                );
+            case 'failed':
+                return (
+                    <div className="text-center p-2 bg-red-100 text-red-800 rounded mb-4">
+                        No se pudo inicializar el sistema de reconocimiento de voz. El login podría ser más lento.
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div>
@@ -135,6 +186,8 @@ const VoiceLogin = ({ onLoginSuccess }) => {
                 onStartRecording={handleStartRecording}
                 onStopRecording={handleStopRecording}
             />
+
+            {renderModelStatus()}
 
             {error && (
                 <div className="text-red-500 text-sm text-center">
