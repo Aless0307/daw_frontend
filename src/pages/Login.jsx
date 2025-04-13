@@ -3,42 +3,59 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import VoiceRecorder from '../components/VoiceRecorder';
 import VoiceLogin from '../components/VoiceLogin';
+import FaceRecorder from '../components/FaceRecorder';
+import FaceLogin from '../components/FaceLogin';
 import { config } from '../config';
 
 const Login = () => {
     const [isRegistering, setIsRegistering] = useState(false);
     const [showVoiceLogin, setShowVoiceLogin] = useState(false);
+    const [showFaceLogin, setShowFaceLogin] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [audioBlob, setAudioBlob] = useState(null);
+    const [isCapturing, setIsCapturing] = useState(false);
+    const [photoBlob, setPhotoBlob] = useState(null);
     const navigate = useNavigate();
     const { login } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setSuccess('');
 
-        try {
-            if (isRegistering) {
-                const formData = new FormData();
-                formData.append('username', username);
-                formData.append('email', email);
-                formData.append('password', password);
-                
-                if (audioBlob) {
-                    formData.append('voice_recording', audioBlob, 'voice.wav');
-                }
+        if (isRegistering) {
+            if (!username || !email || !password) {
+                setError('Por favor completa todos los campos');
+                return;
+            }
 
-                console.log('Enviando datos de registro:', {
-                    username,
-                    email,
-                    hasPassword: !!password,
-                    hasVoiceRecording: !!audioBlob
-                });
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('email', email);
+            formData.append('password', password);
 
+            if(audioBlob){
+                formData.append('voice_recording', audioBlob, 'voice.wav');
+            }
+            
+            if (photoBlob) {
+                formData.append('face_photo', photoBlob, 'face.jpg');
+            }
+
+            console.log('Datos enviados al backend:', {
+                username,
+                email,
+                password,
+                hasVoice: !!audioBlob,
+                hasPhoto: !!photoBlob
+            });
+
+            try {
                 const response = await fetch(`${config.API_URL}/auth/register`, {
                     method: 'POST',
                     body: formData
@@ -51,24 +68,43 @@ const Login = () => {
 
                 const data = await response.json();
                 console.log('Registro exitoso:', data);
+                setSuccess('Registro exitoso. Por favor, inicia sesión.');
                 setIsRegistering(false);
                 setEmail('');
                 setPassword('');
                 setUsername('');
                 setAudioBlob(null);
-                setError('Registro exitoso. Por favor, inicia sesión.');
-            } else {
-                const formData = new URLSearchParams();
-                formData.append('username', email);
-                formData.append('password', password);
+                setPhotoBlob(null);
+            } catch (err) {
+                console.error('Error en el registro:', err);
+                setError('Error al conectar con el servidor');
+            }
+        } else {
+            if (!username || !password) {
+                setError('Por favor completa todos los campos');
+            }
+
+            try {
+                const username = email;
+                const loginData = new URLSearchParams({username, password });
+                console.log('Datos enviados al backend:', {
+                    username,
+                    password,
+                    url: `${config.API_URL}/auth/login`,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    }
+                });
 
                 const response = await fetch(`${config.API_URL}/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: formData
+                    body: loginData
                 });
+
+                console.log('Respuesta del servidor:', response);
 
                 if (!response.ok) {
                     const errorData = await response.json();
@@ -82,19 +118,19 @@ const Login = () => {
                     throw new Error('No se recibió token en la respuesta');
                 }
 
-                const loginData = {
+                const loginDataToSend = {
                     token: data.access_token,
-                    username: data.username || email,
+                    username: data.username || username,
                     email: data.email || email
                 };
 
-                console.log('Datos de login a enviar:', loginData);
-                login(loginData);
+                console.log('Datos de login a enviar:', loginDataToSend);
+                login(loginDataToSend);
                 navigate('/home');
+            } catch (err) {
+                console.error('Error en el inicio de sesión:', err);
+                setError('Error al conectar con el servidor');
             }
-        } catch (err) {
-            console.error('Error:', err);
-            setError(err.message || 'Ha ocurrido un error');
         }
     };
 
@@ -127,6 +163,18 @@ const Login = () => {
         navigate('/home');
     };
 
+    const handlePhotoComplete = (blob) => {
+        setPhotoBlob(blob);
+    };
+
+    const handleStartCapture = () => {
+        setIsCapturing(true);
+    };
+
+    const handleStopCapture = () => {
+        setIsCapturing(false);
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-white py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
@@ -148,7 +196,7 @@ const Login = () => {
                     </p>
                 </div>
 
-                {!showVoiceLogin ? (
+                {!showVoiceLogin && !showFaceLogin ? (
                     <>
                         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                             <div className="rounded-md shadow-sm -space-y-px">
@@ -238,9 +286,32 @@ const Login = () => {
                                         Iniciar sesión con voz
                                     </button>
                                 </div>
+                                <div className="mt-4">
+                                    <button
+                                        onClick={() => setShowFaceLogin(true)}
+                                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    >
+                                        Iniciar sesión con reconocimiento facial
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </>
+                ) : showFaceLogin ? (
+                    <div className="mt-8">
+                        <FaceLogin onLoginSuccess={handleVoiceLoginSuccess} />
+                        <div className="mt-4 text-center">
+                            <button
+                                onClick={() => {
+                                    setShowFaceLogin(false);
+                                    setShowVoiceLogin(false);
+                                }}
+                                className="text-sm text-indigo-600 hover:text-indigo-500"
+                            >
+                                Volver al login normal
+                            </button>
+                        </div>
+                    </div>
                 ) : (
                     <div className="mt-8">
                         <VoiceLogin onLoginSuccess={handleVoiceLoginSuccess} />
@@ -266,6 +337,18 @@ const Login = () => {
                             onStartRecording={handleStartRecording}
                             onStopRecording={handleStopRecording}
                         />
+                        
+                        <div className="mt-6">
+                            <div className="text-center mb-4">
+                                <p className="text-sm text-gray-600">Registro facial (opcional)</p>
+                                <p className="text-xs text-gray-500">Te permitirá iniciar sesión usando reconocimiento facial</p>
+                            </div>
+                            <FaceRecorder
+                                onPhotoComplete={handlePhotoComplete}
+                                onStartCapture={handleStartCapture}
+                                onStopCapture={handleStopCapture}
+                            />
+                        </div>
                     </div>
                 )}
             </div>

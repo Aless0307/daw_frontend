@@ -1,0 +1,35 @@
+.video-container {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.video-container video {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    background-color: #000;
+}
+
+.capture-button {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 4px solid #4CAF50;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.capture-button:hover {
+    transform: translateX(-50%) scale(1.05);
+}
+
+.capture-button:active {
+    transform: translateX(-50%) scale(0.95);
+} 
