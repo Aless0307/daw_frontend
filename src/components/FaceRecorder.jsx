@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './FaceRecorder.css';
-
+import { useNavigate } from 'react-router-dom';
 // Componente FaceRecorder para registrar fotos de rostros
 const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
+    const navigate = useNavigate(); // Hook para navegar entre rutas
     const [isCapturing, setIsCapturing] = useState(false); // Estado para indicar si se está capturando una foto
     const [photoSuccess, setPhotoSuccess] = useState(false); // Estado para indicar si la foto se capturó con éxito
     const [error, setError] = useState(''); // Estado para almacenar errores
@@ -15,7 +16,7 @@ const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
     const stabilityTimerRef = useRef(null); // Referencia al temporizador de estabilidad
     const autoCaptureTimerRef = useRef(null); // Referencia al temporizador de captura automática
     const [isVideoReady, setIsVideoReady] = useState(false); // Estado para indicar si la cámara está lista
-
+    const [isRegistering, setIsRegistering] = useState(true); // Estado para indicar si se está registrando
     // Función para calcular la diferencia entre dos frames
     const calculateFrameDifference = (currentFrame, previousFrame) => {
         if (!previousFrame || !currentFrame || !canvasRef.current) return 0;
@@ -112,22 +113,108 @@ const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
 
             canvas.toBlob((blob) => {
                 if (blob) {
+                    window.capturedPhotoBlob = blob;
                     setPhotoBlob(blob);
                     setPhotoSuccess(true);
                     if (onPhotoComplete) {
                         onPhotoComplete(blob);
                     }
                     const now = new Date();
-                    console.log(`Foto capturada con éxito a las ${now.toLocaleTimeString()}`);
-                } else {
-                    setError('No se pudo capturar la foto');
+                    // Convertir blob a una URL temporal y guardarla en sessionStorage
+                    const blobUrl = URL.createObjectURL(blob);
+                    sessionStorage.setItem('capturedPhoto', blobUrl);
+
+                    
+                    // Registrar datos sobre la foto capturada
+                    const imageSizeKB = (blob.size / 1024).toFixed(2);
+                    console.log("\n%c========== DATOS DE CAPTURA FACIAL ==========", "color: #2196F3; font-weight: bold; font-size: 14px;");
+                    console.log("%cFecha y hora: %c" + now.toLocaleString(), "color: #4CAF50; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cTamaño: %c" + imageSizeKB + " KB", "color: #4CAF50; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cTipo: %c" + blob.type, "color: #4CAF50; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cResolución: %c" + canvas.width + "x" + canvas.height + " px", "color: #4CAF50; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cEstabilidad: %c" + Math.round((1 - stability/5) * 100) + "%", "color: #4CAF50; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cLuminosidad: %c" + Math.round(lightLevel) + "%", "color: #4CAF50; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cUbicación temporal: %c" + blobUrl, "color: #4CAF50; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%c===============================================", "color: #2196F3; font-weight: bold; font-size: 14px;");
+
+
+                const raw = sessionStorage.getItem('recordedAudio');
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    //Todos los datos almacenados en sessionStorage
+                    //impresión de todo lo guardado en sessionStorage
+                    console.log("\n%c========== DATOS ALMACENADOS EN SESSION STORAGE ==========", "color: #FF9800; font-weight: bold; font-size: 14px;");
+                    console.log("%cNombre de usuario: %c" + sessionStorage.getItem('username'), "color: #FF9800; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cEmail: %c" + sessionStorage.getItem('email'), "color: #FF9800; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cContraseña: %c" + sessionStorage.getItem('password'), "color: #FF9800; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cFoto capturada: %c" + blobUrl, "color: #FF9800; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%cAudio grabado: %c" + data.url, "color: #FF9800; font-weight: bold", "color: #000; font-weight: normal");
+                    console.log("%c========================================================", "color: #FF9800; font-weight: bold; font-size: 14px;");
+                
                 }
-            }, 'image/jpeg', 0.95);
-        } catch (error) {
-            console.error('Error al capturar la foto:', error);
-            setError('Error al capturar la foto');
-        }
-    };
+
+                if (isRegistering) {
+                    //enviamos todo al backend
+                    const formData = new FormData();
+
+                    // Agregar datos de texto
+                    formData.append("username", sessionStorage.getItem("username"));
+                    formData.append("email", sessionStorage.getItem("email"));
+                    formData.append("password", sessionStorage.getItem("password"));
+
+                    // Agregar la foto si existe
+                    if (window.capturedPhotoBlob) {
+                        const photoFile = new File([window.capturedPhotoBlob], "cara.jpg", { type: "image/jpeg" });
+                        formData.append("face_photo", photoFile);
+                    } else {
+                        console.warn("⚠️ No se encontró la foto en memoria");
+                    }
+
+                    // Agregar la grabación si existe
+                    if (window.recordedAudioBlob) {
+                        const audioFile = new File([window.recordedAudioBlob], "voz.wav", { type: "audio/wav" });
+                        formData.append("voice_recording", audioFile);
+                    } else {
+                        console.warn("⚠️ No se encontró el audio en memoria");
+                    }
+
+                    fetch("http://localhost:8003/auth/register", {
+                        method: "POST",
+                        body: formData
+                    })
+                    .then(async response => {
+                        const data = await response.json();
+                    
+                        if (!response.ok) {
+                            console.error("❌ Error al registrar:", data.detail);
+                            throw new Error(data.detail || 'Error desconocido en el registro');
+                        }
+                    
+                        console.log("✅ Registro exitoso:", data);
+                        window.capturedPhotoBlob = null;
+                        window.recordedAudioBlob = null;
+                        sessionStorage.clear(); // Limpiar sessionStorage después del registro
+                        sessionStorage.setItem('registered', 'true');
+                        navigate('/AccessibleLogin');
+
+                    })
+                    .catch(error => {
+                        console.error("❌ Error al registrar:", error);
+                    })
+                    .finally(() => {
+                        setIsRegistering(false);
+                    });
+                    
+                }
+            } else {
+                                setError('No se pudo capturar la foto');
+                            }
+                        }, 'image/jpeg', 0.95);
+                    } catch (error) {
+                        console.error('Error al capturar la foto:', error);
+                        setError('Error al capturar la foto');
+                    }
+                };
 
     // Efecto para monitorear las condiciones y capturar automáticamente
     useEffect(() => {
@@ -235,7 +322,7 @@ const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
                 <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
                     <p className="text-sm text-green-600">¡Foto capturada con éxito! Ya puedes enviar el formulario.</p>
                 </div>
-            )}
+             )}
 
             <div className="mb-4">
                 {isCapturing && (
@@ -260,6 +347,7 @@ const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
 
             <div className="flex items-center justify-between">
                 <button
+                    id="iniciarCamaraBtn"
                     onClick={isCapturing ? handleStopCapture : handleStartCapture}
                     className={`px-4 py-2 rounded-md font-medium ${
                         isCapturing
@@ -267,6 +355,7 @@ const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
                             : 'bg-blue-600 hover:bg-blue-700 text-white'
                     }`}
                     type="button"
+                    data-testid="camera-button"
                 >
                     {isCapturing ? 'Detener Cámara' : 'Iniciar Cámara'}
                 </button>
@@ -275,4 +364,4 @@ const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
     );
 };
 
-export default FaceRecorder; 
+export default FaceRecorder;

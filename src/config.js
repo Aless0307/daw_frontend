@@ -2,11 +2,19 @@
 const ENV = {
     development: {
         API_URL: 'http://localhost:8003',
-        FRONTEND_URL: 'http://localhost:5173'
+        FRONTEND_URL: 'http://localhost:5173',
+        AWS_REGION: 'us-east-1',
+        GROQ_API_URL: 'https://api.groq.com/v1',
+        VOICE_ID: 'Lucia', // Voz en español de Amazon Polly
+        ACTIVATION_PHRASE: 'hey asistente'
     },
     production: {
         API_URL: 'https://dawbackend-production.up.railway.app',
-        FRONTEND_URL: 'https://daw-frontend.vercel.app'
+        FRONTEND_URL: 'https://daw-frontend.vercel.app',
+        AWS_REGION: 'us-east-1',
+        GROQ_API_URL: 'https://api.groq.com/v1',
+        VOICE_ID: 'Lucia',
+        ACTIVATION_PHRASE: 'hey asistente'
     }
 };
 

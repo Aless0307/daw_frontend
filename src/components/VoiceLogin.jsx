@@ -1,212 +1,106 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { config } from '../config';
-import VoiceRecorder from './VoiceRecorder';
 
-const VoiceLogin = ({ onLoginSuccess }) => {
-    const [email, setEmail] = useState('');
+const VoiceLogin = ({ onLoginSuccess, onCancel }) => {
+    const [isListening, setIsListening] = useState(false);
+    const [voiceRecognized, setVoiceRecognized] = useState(false);
+    const [message, setMessage] = useState('Presione el botón para comenzar con el reconocimiento de voz');
     const [error, setError] = useState('');
-    const [isRecording, setIsRecording] = useState(false);
-    const [audioBlob, setAudioBlob] = useState(null);
-    const [modelStatus, setModelStatus] = useState('pending'); // 'pending', 'warming', 'ready', 'failed'
-    const navigate = useNavigate();
-    const { login } = useAuth();
 
-    // Precalentar el modelo de voz cuando el componente se monta
     useEffect(() => {
-        const warmupModel = async () => {
-            try {
-                setModelStatus('warming');
-                console.log('Precalentando modelo de voz...');
-                
-                const response = await fetch(`${config.API_URL}/voice/warmup`, {
-                    method: 'GET'
-                });
-                
-                const data = await response.json();
-                console.log('Respuesta del warmup:', data);
-                
-                if (data.model_loaded) {
-                    setModelStatus('ready');
-                    console.log('Modelo de voz listo para usar');
-                } else {
-                    setModelStatus('failed');
-                    console.error('Error al precalentar el modelo de voz:', data.message);
-                }
-            } catch (error) {
-                console.error('Error al precalentar el modelo:', error);
-                setModelStatus('failed');
+        // Cleanup function cuando el componente se desmonta
+        return () => {
+            if (isListening) {
+                stopListening();
             }
         };
-        
-        warmupModel();
-    }, []);
+    }, [isListening]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const startListening = async () => {
+        setIsListening(true);
+        setMessage('Escuchando... Por favor, diga su nombre de usuario');
         setError('');
-        console.log('Iniciando handleSubmit...');
-        console.log('Estado actual:', { email, hasAudioBlob: !!audioBlob });
-
-        if (!email) {
-            console.log('Error: email vacío');
-            setError('Por favor, ingresa tu email');
-            return;
-        }
-
-        if (!audioBlob) {
-            console.log('Error: audioBlob vacío');
-            setError('Por favor, graba tu voz');
-            return;
-        }
-
+        
         try {
-            console.log('Creando FormData...');
-            const formData = new FormData();
-            formData.append('email', email);
-            formData.append('voice_recording', audioBlob, 'voice.wav');
-
-            // Verificar contenido del FormData
-            console.log('Contenido del FormData:');
-            for (let pair of formData.entries()) {
-                console.log(pair[0] + ': ' + pair[1]);
-            }
-
-            console.log('Enviando datos de login con voz:', {
-                email,
-                hasVoiceRecording: !!audioBlob,
-                audioBlobType: audioBlob.type,
-                audioBlobSize: audioBlob.size
-            });
-
-            console.log('URL de la API:', `${config.API_URL}/auth/login-voice`);
-
-            const response = await fetch(`${config.API_URL}/auth/login-voice`, {
-                method: 'POST',
-                body: formData
-            });
-
-            console.log('Respuesta recibida:', {
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Error en la respuesta:', errorData);
-                throw new Error(errorData.detail || 'Error en el login con voz');
-            }
-
-            const data = await response.json();
-            console.log('Login con voz exitoso:', data);
-
-            if (!data.access_token) {
-                console.error('No se recibió token en la respuesta');
-                throw new Error('No se recibió token en la respuesta');
-            }
-
-            const loginData = {
-                token: data.access_token,
-                username: data.username,
-                email: data.email
-            };
-
-            console.log('Datos de login a enviar:', loginData);
-            login(loginData);
-            navigate('/home');
+            // En una implementación real, aquí iría la lógica para iniciar la grabación
+            // y el procesamiento de voz utilizando la API de Web Speech o una librería similar
+            
+            // Simulación de procesamiento de voz
+            setTimeout(() => {
+                setMessage('Voz detectada. Verificando identidad...');
+                setVoiceRecognized(true);
+                
+                // Simulación de autenticación
+                setTimeout(() => {
+                    // Simula una llamada exitosa a la API
+                    const mockUser = {
+                        username: 'usuario_de_voz',
+                        email: 'usuario@ejemplo.com'
+                    };
+                    const mockToken = 'token-simulado-12345';
+                    
+                    onLoginSuccess(mockToken, mockUser);
+                }, 2000);
+            }, 3000);
         } catch (err) {
-            console.error('Error completo:', err);
-            setError(err.message || 'Ha ocurrido un error');
+            setError('Error al iniciar el reconocimiento de voz: ' + err.message);
+            setIsListening(false);
         }
     };
 
-    const handleStartRecording = () => {
-        console.log('Iniciando grabación...');
-        setIsRecording(true);
-    };
-
-    const handleStopRecording = () => {
-        console.log('Deteniendo grabación...');
-        setIsRecording(false);
-    };
-
-    const handleRecordingComplete = (blob) => {
-        console.log('Grabación completada:', {
-            blobType: blob.type,
-            blobSize: blob.size
-        });
-        setAudioBlob(blob);
-    };
-
-    // Mostrar estado de carga del modelo
-    const renderModelStatus = () => {
-        switch (modelStatus) {
-            case 'warming':
-                return (
-                    <div className="text-center p-2 bg-yellow-100 text-yellow-800 rounded mb-4">
-                        Preparando sistema de reconocimiento de voz...
-                    </div>
-                );
-            case 'failed':
-                return (
-                    <div className="text-center p-2 bg-red-100 text-red-800 rounded mb-4">
-                        No se pudo inicializar el sistema de reconocimiento de voz. El login podría ser más lento.
-                    </div>
-                );
-            default:
-                return null;
+    const stopListening = () => {
+        // En una implementación real, aquí iría la lógica para detener la grabación
+        setIsListening(false);
+        if (!voiceRecognized) {
+            setMessage('Reconocimiento de voz cancelado');
         }
     };
 
     return (
-        <div className="space-y-6">
-            <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Correo electrónico
-                </label>
-                <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => {
-                        console.log('Email cambiado:', e.target.value);
-                        setEmail(e.target.value);
-                    }}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="Correo electrónico"
-                />
-            </div>
-
-            <VoiceRecorder
-                onRecordingComplete={handleRecordingComplete}
-                onStartRecording={handleStartRecording}
-                onStopRecording={handleStopRecording}
-            />
-
-            {renderModelStatus()}
-
+        <div className="mt-8 space-y-6">
             {error && (
-                <div className="text-red-500 text-sm text-center">
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     {error}
                 </div>
             )}
-
-            <div className="flex flex-col items-center space-y-4">
-                <button
-                    type="submit"
-                    onClick={handleSubmit}
-                    disabled={!email || !audioBlob}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    Iniciar sesión con voz
-                </button>
+            
+            <div className="text-center">
+                <div className={`p-8 mb-4 rounded-full mx-auto w-32 h-32 flex items-center justify-center ${
+                    isListening ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
+                }`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                </div>
+                
+                <p className="my-4 text-lg">{message}</p>
+                
+                <div className="flex space-x-4 justify-center mt-6">
+                    {!isListening ? (
+                        <button
+                            onClick={startListening}
+                            className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none"
+                        >
+                            Iniciar reconocimiento
+                        </button>
+                    ) : (
+                        <button
+                            onClick={stopListening}
+                            className="px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none"
+                        >
+                            Detener reconocimiento
+                        </button>
+                    )}
+                    
+                    <button
+                        onClick={onCancel}
+                        className="px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none"
+                    >
+                        Cancelar
+                    </button>
+                </div>
             </div>
         </div>
     );
 };
 
-export default VoiceLogin; 
+export default VoiceLogin;

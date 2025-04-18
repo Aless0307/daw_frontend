@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, HashRouter } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import AccessibleLogin from './pages/AccessibleLogin';
 import Home from './pages/Home';
 import Acerca from './pages/Acerca';
 import Navbar from './components/Navbar';
@@ -17,7 +18,7 @@ const AppLayout = () => {
       {user && <Navbar />}
       <main className="flex-grow">
         <Routes>
-          <Route path="/" element={<Navigate to={user ? "/home" : "/login"} />} />
+          <Route path="/" element={<AccessibleLogin />} />
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/home" />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/acerca" element={<Acerca />} />
