@@ -110,7 +110,7 @@ const BraillePassword = ({ onPasswordComplete }) => {
             return;
         }
         
-
+        sessionStorage.setItem('brailleactivado', 'true');
         // Crear instancia de reconocimiento de voz
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognitionRef.current = new SpeechRecognition();
@@ -208,6 +208,7 @@ const BraillePassword = ({ onPasswordComplete }) => {
             
             // Cancelar cualquier síntesis de voz pendiente
             window.speechSynthesis.cancel();
+            sessionStorage.removeItem('brailleactivado');
         };
     }, []);
 
@@ -442,8 +443,6 @@ const BraillePassword = ({ onPasswordComplete }) => {
             }
         }
         
-        // Si llegamos aquí, no hemos reconocido ningún comando o número válido
-        playAudio('notUnderstood');
     };
     
     // Manejar combinación de números
@@ -805,22 +804,29 @@ const BraillePassword = ({ onPasswordComplete }) => {
             stopListening();
             
             // Reproducir el resumen de la contraseña
-            setTimeout(async () => {
-                await speakPasswordSummary();
-                
-                // Después de reproducir el resumen, preguntar si quiere editar
-                setTimeout(() => {
-                    console.log("Preguntando si desea editar la contraseña");
-                    // Iniciar modo de edición
-                    startEditMode();
-                    // Reiniciar la escucha para captar la respuesta
-                    setTimeout(() => {
-                        if (recognitionRef.current) {
-                            startListening();
-                        }
-                    }, 500);
-                }, 1000);
-            }, 1500);
+            const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+            (async () => {
+                await delay(1500); // Esperar antes de hablar
+            
+                await speakPasswordSummary(); // Habla resumen de la contraseña
+            
+                await delay(1000); // Espera antes de preguntar
+            
+                console.log("Preguntando si desea editar la contraseña");
+                await startEditMode(); // Activa el modo de edición
+            
+                await delay(500); // Espera antes de empezar a escuchar
+            
+                if (recognitionRef.current) {
+                    console.log("##############################");
+                    console.log("Entrando a destiempo");
+                    console.log("##############################");
+                    startListening(); // Empieza a escuchar solo si está listo
+                }
+            })();
+            
+            
             
         } else {
             console.log("No se puede completar: contraseña vacía");
@@ -832,7 +838,12 @@ const BraillePassword = ({ onPasswordComplete }) => {
     // Iniciar la escucha de voz
     const startListening = () => {
         try {
+            setTimeout(() => {
             playBeep();
+            }, 1000);
+            if(sessionStorage.getItem('brailleactivado') == 'true') {
+                sessionStorage.removeItem('brailleactivado');
+            }
             // Detener cualquier instancia previa si está en ejecución
             if (recognitionRef.current) {
                 try {
@@ -870,16 +881,17 @@ const BraillePassword = ({ onPasswordComplete }) => {
         setMessage('');
     };
 
-    // Reproducir archivos de audio
     const playAudio = (audioName) => {
-        try {
-            console.log(`Reproduciendo mensaje: ${audioName}`);
-            
-            // Comprobar si es uno de los nuevos audios de edición
-            if (audioName.startsWith('edit_') || audioName === 'position_selected') {
-                // Intentar reproducir el archivo de audio pregrabado para edición
-                playPredefinedMessage(audioName)
-                    .catch(error => {
+        return new Promise(async (resolve) => {
+            try {
+                console.log(`Reproduciendo mensaje: ${audioName}`);
+                
+                // Comprobar si es uno de los nuevos audios de edición
+                if (audioName.startsWith('edit_') || audioName === 'position_selected') {
+                    try {
+                        await playPredefinedMessage(audioName);
+                        resolve();
+                    } catch (error) {
                         console.error(`Error al reproducir audio de edición ${audioName}:`, error);
                         // Fallback a mensajes de texto en caso de error
                         let fallbackMessage = "";
@@ -912,56 +924,52 @@ const BraillePassword = ({ onPasswordComplete }) => {
                                 fallbackMessage = "Comando de edición no reconocido.";
                                 break;
                         }
-                        speakMessage(fallbackMessage);
-                    });
-                return;
+    
+                        await speakMessage(fallbackMessage);
+                        resolve();
+                    }
+                    return;
+                }
+    
+                // Para mensajes normales con síntesis
+                let message = "";
+                switch (audioName) {
+                    case 'braillePointsRecognized':
+                        message = "Puntos reconocidos";
+                        break;
+                    case 'brailleCharacterConfirmed':
+                        message = "Carácter confirmado";
+                        break;
+                    case 'brailleError':
+                        message = "Error. Intenta de nuevo";
+                        break;
+                    case 'brailleCharacterDeleted':
+                        message = "Último carácter eliminado";
+                        break;
+                    case 'braillePasswordSaved':
+                        message = "Contraseña guardada correctamente";
+                        break;
+                    case 'brailleHelp':
+                        message = "Di los números de los puntos braille que deseas activar, luego di siguiente para confirmar el carácter";
+                        break;
+                    default:
+                        message = audioName;
+                }
+    
+                if (message.trim()) {
+                    setMessage(message);
+                    await speakMessage(message);
+                }
+    
+                resolve();
+            } catch (error) {
+                console.error(`Error general al manejar audio ${audioName}:`, error);
+                setMessage(`Error de audio. Por favor, utiliza los botones en pantalla.`);
+                resolve(); // Asegura que nunca se quede colgado
             }
-            
-            // Usar síntesis de voz para el resto de mensajes
-            let message = "";
-            
-            // Mapeo de identificadores de audio a mensajes
-            switch (audioName) {
-                case 'braillePointsRecognized':
-                    message = "Puntos reconocidos";
-                    break;
-                case 'brailleCharacterConfirmed':
-                    message = "Carácter confirmado";
-                    break;
-                case 'brailleError':
-                    message = "Error. Intenta de nuevo";
-                    break;
-                case 'brailleCharacterDeleted':
-                    message = "Último carácter eliminado";
-                    break;
-                case 'braillePasswordSaved':
-                    message = "Contraseña guardada correctamente";
-                    break;
-                case 'brailleHelp':
-                    message = "Di los números de los puntos braille que deseas activar, luego di siguiente para confirmar el carácter";
-                    break;
-                case 'notUnderstood':
-                    message = "No he entendido. Por favor, di números del 1 al 6, o comandos como siguiente, borrar o he terminado";
-                    break;
-                default:
-                    message = audioName; // Usar el nombre como mensaje si no hay mapeo
-            }
-            
-            // Evitar llamar a speakMessage si está vacío
-            if (message.trim()) {
-                // También actualizar el mensaje en pantalla para mayor feedback
-                setMessage(message);
-                // Usar directamente speakMessage para unificar manejo de errores
-                speakMessage(message);
-            }
-            
-        } catch (error) {
-            console.error(`Error general al manejar audio ${audioName}:`, error);
-            // Mostrar el error en pantalla ya que la síntesis falló
-            setMessage(`Error de audio. Por favor, utiliza los botones en pantalla.`);
-        }
+        });
     };
-
+    
     // Función para reproducir un archivo de audio pregrabado
     const playPredefinedMessage = (audioName) => {
         return new Promise((resolve, reject) => {
@@ -1154,25 +1162,21 @@ const BraillePassword = ({ onPasswordComplete }) => {
         return false;
     };
 
-    // Iniciar el modo de edición
-    const startEditMode = () => {
+    const startEditMode = async () => {
         if (passwordRef.current.length === 0) {
-            speakMessage("No hay una contraseña para editar.");
+            await speakMessage("No hay una contraseña para editar.");
             return;
         }
-        
+    
         setEditMode(true);
         setEditStep('askEdit');
-        // Resetear el estado para controlar si ya se reprodujeron las instrucciones
         setPlayedEditInstructions(false);
-        // Resetear el estado del prompt de posición
         setPlayedPositionPrompt(false);
-        playAudio('edit_password_question');
-        
-        // Ya no reproducimos automáticamente el prompt de posición aquí,
-        // ahora se reproducirá solo cuando el usuario diga "editar"
+    
+        // Esperar a que se reproduzca completamente la pregunta
+        await playAudio('edit_password_question');
     };
-
+    
     // Confirmar los cambios hechos en la posición editada
     const confirmEditedPosition = () => {
         // Obtener el carácter actual desde la referencia

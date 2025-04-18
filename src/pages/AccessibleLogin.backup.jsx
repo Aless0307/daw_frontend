@@ -1,57 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import {playBeep, playPredefinedMessage } from '../services/audioService';
-import { config } from '../config';
+
+// Importar componentes modulares
 import VoiceRecorder from '../components/VoiceRecorder';
 import VoiceLogin from '../components/VoiceLogin';
 import FaceRecorder from '../components/FaceRecorder';
 import FaceLogin from '../components/FaceLogin';
-import BraillePassword from '../components/BraillePassword'
-import { useLocation } from 'react-router-dom';;
+import BraillePassword from '../components/BraillePassword';
+
+// Importar servicios modularizados
+import { 
+    queueAudioMessage, 
+    AUDIO_MESSAGES, 
+    stopCurrentAudio, 
+    repeatLastMessage, 
+    playWithFallback 
+} from '../components/AccessibleLogin/AudioService';
+import { SpeechRecognitionService } from '../components/AccessibleLogin/SpeechRecognitionService';
+import { SpeechProcessor } from '../components/AccessibleLogin/SpeechProcessor';
+import { StateManager } from '../components/AccessibleLogin/StateManager';
+import { RegistrationHandler } from '../components/AccessibleLogin/RegistrationHandler';
+import { LoginHandler } from '../components/AccessibleLogin/LoginHandler';
 
 // Claves de los mensajes de audio predefinidos
-const AUDIO_MESSAGES = {
-    welcome: "welcome",
-    askRegistration: "askRegistration",
-    registered: "registered",
-    notRegistered: "notRegistered",
-    listening: "listening",
-    notUnderstood: "notUnderstood",
-    goodbye: "goodbye",
-    askLoginOrRegister: "askLoginOrRegister",
-    login: "login",
-    register: "register",
-    voiceLogin: "voiceLogin",
-    faceLogin: "faceLogin",
-    loginSuccess: "loginSuccess",
-    loginError: "loginError",
-    registerInstructions: "registerInstructions",
-    registerVoiceGuide: "registerVoiceGuide",
-    askUserName: "askUserName",
-    userNameConfirmed: "userNameConfirmed",
-    emailConfirmed: "emailConfirmed",
-    passwordConfirmed: "passwordPrompt", // Apuntando al audio correcto que sí existe
-    braillePasswordSaved: "braillePasswordSaved",
-    
-    // Nuevos mensajes para la grabación de voz biométrica
-    voiceRecordingPrompt: "voiceRecordingPrompt",
-    voiceRecordingSample: "voiceRecordingSample", 
-    voiceRecordingComplete: "voiceRecordingComplete",
-    
-    // Nuevo mensaje para la captura facial
-    faceCapture: "faceCapture",
-    emailHelp: "emailHelp"
-};
-
-
-// Clave para almacenar el último mensaje en localStorage
 const LAST_MESSAGE_KEY = 'accessibleLogin_lastAudioMessage';
 
 const AccessibleLogin = () => {
     console.log('Renderizando AccessibleLogin');
     
-       // Estados para control de UI
+    // Estados para control de UI
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [error, setError] = useState('');
@@ -82,6 +60,7 @@ const AccessibleLogin = () => {
     const [registrationStep, setRegistrationStep] = useState(null); // null, 'braille', 'voice', 'face', 'complete'
     const [voiceRegistrationComplete, setVoiceRegistrationComplete] = useState(false);
     const [playingAudio, setPlayingAudio] = useState(false);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     // Referencias
     const audioQueueRef = useRef([]);
@@ -95,8 +74,198 @@ const AccessibleLogin = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
 
-    // Dentro de los estados en la parte superior del componente AccessibleLogin
-    const [isLoggingIn, setIsLoggingIn] = useState(false);
+    // Inicializar servicios modularizados
+    const stateManager = new StateManager(
+        setIsRegistering,
+        setShowVoiceLogin,
+        setShowFaceLogin,
+        setIsLoggingIn
+    );
+
+    const speechProcessor = new SpeechProcessor(
+        (action) => stateManager.updateAppState(action, isRegistering, showVoiceLogin, showFaceLogin, isLoggingIn),
+        setUsername,
+        setEmail,
+        setShowBrailleInput,
+        () => setIsListening(false),
+        isListening
+    );
+
+    // Inicializar manejadores
+    const { handleVoiceLoginSuccess, handleSubmitLogin } = LoginHandler({
+        username,
+        password,
+        setError,
+        login,
+        navigate
+    });
+
+    const { 
+        handleVoiceRecordingComplete: handleVoiceRecording, 
+        handleBraillePasswordComplete: handleBraillePassword,
+        handleSubmitRegistration
+    } = RegistrationHandler({
+        username,
+        email,
+        password,
+        audioBlob,
+        photoBlob,
+        setSuccess,
+        setError,
+        setIsRegistering,
+        setEmail,
+        setPassword,
+        setUsername,
+        setAudioBlob,
+        setPhotoBlob
+    });
+
+    // Función para manejar la interacción del usuario
+    const handleUserInteraction = () => {
+        if (!isInitialized && !hasPlayedWelcomeRef.current) {
+            setIsInitialized(true);
+            hasPlayedWelcomeRef.current = true;
+            // Reproducir mensaje de bienvenida y luego preguntar si quiere iniciar sesión o registrarse
+            queueAudioMessage(AUDIO_MESSAGES.welcome);
+            setTimeout(() => {
+                queueAudioMessage(AUDIO_MESSAGES.askLoginOrRegister);
+            }, 2000); // Esperar 2 segundos después del mensaje de bienvenida
+        }
+    };
+
+    // Añadir event listeners para cualquier interacción
+    useEffect(() => {
+        const events = ['click', 'touchstart'];
+        events.forEach(event => {
+            window.addEventListener(event, handleUserInteraction, { once: true });
+        });
+
+        // Añadir listener para las teclas espacio y enter
+        const handleKeyPress = (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isPlayingRef.current) {
+                    // Si está reproduciendo audio, detenerlo
+                    stopCurrentAudio();
+                } else if (!isListening && !showBrailleInput) {
+                    // Solo iniciar reconocimiento si no está el braille activo
+                    handleStartListening();
+                }
+            } else if (e.code === 'Enter') {
+                e.preventDefault();
+                // Repetir el último mensaje
+                repeatLastMessage();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyPress);
+
+        return () => {
+            events.forEach(event => {
+                window.removeEventListener(event, handleUserInteraction);
+            });
+            window.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [isListening, showBrailleInput]);
+
+    // Inicializar servicio de reconocimiento de voz
+    const speechRecognition = new SpeechRecognitionService(
+        setTranscript,
+        (text) => speechProcessor.processUserSpeech(text, isRegistering, showVoiceLogin, showFaceLogin),
+        setIsListening,
+        setError
+    );
+
+    const handleStartListening = async () => {
+        console.log('🎙️ Iniciando reconocimiento de voz...');
+        
+        // No iniciar reconocimiento si se está mostrando la interfaz de braille
+        if (showBrailleInput) {
+            console.log('⚠️ No se puede iniciar el reconocimiento mientras está activa la interfaz de braille');
+            return;
+        }
+        
+        // Verificar si hay audio reproduciéndose antes de iniciar el reconocimiento
+        if (isPlayingRef.current) {
+            console.log('⚠️ No se puede iniciar el reconocimiento de voz mientras se reproduce un audio');
+            return;
+        }
+        
+        // Si estamos en modo registro, mostrar un mensaje visual de ayuda
+        if (isRegistering) {
+            // Mostrar un mensaje visual de ayuda
+            setTranscript('Esperando que digas tu información...');
+        }
+        
+        // Iniciar reconocimiento de voz
+        await speechRecognition.startListening();
+    };
+
+    const handleStopListening = () => {
+        speechRecognition.stopListening();
+    };
+
+    // Funciones para grabación de voz
+    const handleVoiceRecordingComplete = (blob) => {
+        handleVoiceRecording(blob, voiceRegisteredRef, setVoiceRegistrationComplete, setRegistrationStep);
+    };
+
+    const handleStartRecording = () => {
+        setIsRecording(true);
+    };
+
+    const handleStopRecording = () => {
+        setIsRecording(false);
+    };
+
+    // Funciones para captura facial
+    const handlePhotoComplete = (blob) => {
+        setPhotoBlob(blob);
+    };
+
+    const handleStartCapture = () => {
+        setIsCapturing(true);
+    };
+
+    const handleStopCapture = () => {
+        setIsCapturing(false);
+    };
+
+    // Función para manejar la contraseña en braille
+    const handleBraillePasswordComplete = (braillePassword) => {
+        handleBraillePassword(braillePassword, setShowBrailleInput, setIsBrailleComplete);
+    };
+
+    // Verificar el estado de showBrailleInput
+    useEffect(() => {
+        if (showBrailleInput) {
+            console.log('🔐 showBrailleInput ha cambiado a true - Iniciando creación de contraseña braille');
+            // Detener reconocimiento de voz si está activo
+            if (isListening) {
+                handleStopListening();
+            }
+        }
+    }, [showBrailleInput, isListening]);
+
+    // Verificar si el usuario ya se registró previamente
+    const [wasRegistered, setWasRegistered] = useState(false);
+
+    useEffect(() => {
+        const registeredFlag = sessionStorage.getItem('registered');
+        if (registeredFlag === 'true') {
+            setWasRegistered(true);
+            sessionStorage.removeItem('registered'); // Limpiar para que no se muestre otra vez
+        }
+    }, []);
+
+    // Función para enviar formulario
+    const handleSubmit = async (e) => {
+        if (isRegistering) {
+            handleSubmitRegistration(e);
+        } else {
+            handleSubmitLogin(e);
+        }
+    };
 
     // Función para interrumpir la reproducción de audio
     const stopCurrentAudio = () => {
@@ -166,6 +335,37 @@ const AccessibleLogin = () => {
         // Si se encontró un mensaje para repetir, reproducirlo
         if (messageToRepeat) {
             queueAudioMessage(messageToRepeat);
+        }
+    };
+
+    // Función para reproducir un mensaje con respaldo de síntesis de voz
+    const playWithFallback = (messageKey, fallbackText) => {
+        try {
+            // Primero verificar si el audio existe
+            fetch(`${window.location.origin}/audio/${messageKey}.mp3`, { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        console.log(`Reproduciendo audio ${messageKey} desde archivo...`);
+                        queueAudioMessage(messageKey);
+                    } else {
+                        console.log(`Audio ${messageKey} no encontrado, usando síntesis de voz...`);
+                        // Si no existe el archivo, usar síntesis de voz como respaldo
+                        try {
+                            const msg = new SpeechSynthesisUtterance();
+                            msg.text = fallbackText;
+                            msg.lang = 'es-ES';
+                            msg.rate = 0.9; // Velocidad ligeramente más lenta para mejor comprensión
+                            window.speechSynthesis.speak(msg);
+                        } catch (synthError) {
+                            console.error(`Error con síntesis de voz: ${synthError}`);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error al verificar audio ${messageKey}:`, error);
+                });
+        } catch (error) {
+            console.error(`Error al reproducir mensaje ${messageKey}:`, error);
         }
     };
 
@@ -274,7 +474,7 @@ const AccessibleLogin = () => {
                 
                 console.log('🔄 Procesando texto final:', text);
                 finalTranscriptRef.current = text;
-                processUserSpeech(text);
+                speechProcessor.processUserSpeech(text, isRegistering, showVoiceLogin, showFaceLogin);
                 hasProcessedSpeech = true;
             };
 
@@ -305,9 +505,6 @@ const AccessibleLogin = () => {
                     }
                 }
             };
-
-            // Iniciar un intervalo para verificar el silencio cada 100ms
-            silenceDetectionInterval = setInterval(checkForSilence, 100);
 
             recognition.onstart = () => {
                 console.log('🎙️ Reconocimiento de voz iniciado');
@@ -592,10 +789,7 @@ const AccessibleLogin = () => {
             const usernamePattern1 = /mi nombre (de usuario )?es\s+([a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ]+)/i;
             const usernamePattern2 = /([a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ]+)\s+es mi nombre/i;
             const usernamePattern3 = /me llamo\s+([a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ]+)/i;
-            
-            // Patrones mejorados para reconocer correos electrónicos con frases introductorias
-            const emailPattern1 = /mi (correo|email|mail|e-mail|dirección)( electrónico)? es ([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i;
-            const emailPattern2 = /([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}) es mi (correo|email|mail|e-mail|dirección)( electrónico)?/i;
+            const emailPattern3 = /mi (correo|email|mail|e-mail|dirección)( electrónico)? es ([a-zA-Z0-9]+)( guion bajo| guión bajo| underscore)([a-zA-Z0-9]+) arroba ([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i;
             
             // Verificar si está diciendo su nombre de usuario
             let match;
@@ -638,32 +832,6 @@ const AccessibleLogin = () => {
                 }, 2000);
                 return;
             }
-            
-            // Verificar si está diciendo su correo directamente
-            if ((match = normalizedText.match(emailPattern1))) {
-                const extractedEmail = `${match[3]}@${match[4]}`;
-                console.log('✅ Correo electrónico reconocido (patrón 1):', extractedEmail);
-                if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(extractedEmail)) {
-                    setEmail(extractedEmail);
-                    queueAudioMessage(AUDIO_MESSAGES.emailConfirmed);
-                    queueAudioMessage(AUDIO_MESSAGES.passwordConfirmed);
-                    if (isListening) handleStopListening();
-                    setShowBrailleInput(true);
-                    return;
-                }
-            } else if ((match = normalizedText.match(emailPattern2))) {
-                const extractedEmail = `${match[1]}@${match[2]}`;
-                console.log('✅ Correo electrónico reconocido (patrón 2):', extractedEmail);
-                if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(extractedEmail)) {
-                    setEmail(extractedEmail);
-                    queueAudioMessage(AUDIO_MESSAGES.emailConfirmed);
-                    queueAudioMessage(AUDIO_MESSAGES.passwordConfirmed);
-                    if (isListening) handleStopListening();
-                    setShowBrailleInput(true);
-                    return;
-                }
-            }
-            
             const letterToCharMap = {
                 a: 'a', be: 'b', ce: 'c', de: 'd', e: 'e', efe: 'f', ge: 'g',
                 hache: 'h', i: 'i', jota: 'j', ka: 'k', ele: 'l', eme: 'm', ene: 'n',
@@ -671,66 +839,30 @@ const AccessibleLogin = () => {
                 u: 'u', ve: 'v', uve: 'v', 'doble ve': 'w', equis: 'x', ye: 'y', zeta: 'z',
                 'i griega': 'y', cero: '0', uno: '1', dos: '2', tres: '3', cuatro: '4',
                 cinco: '5', seis: '6', siete: '7', ocho: '8', nueve: '9',
-                // Añadir variantes para números
-                'veinticinco': '25', 'setenta y ocho': '78', 'treinta y cuatro': '34',
-                // Añadir números comunes
-                'diez': '10', 'once': '11', 'doce': '12', 'trece': '13', 'catorce': '14',
-                'quince': '15', 'dieciséis': '16', 'diecisiete': '17', 'dieciocho': '18',
-                'diecinueve': '19', 'veinte': '20', 'treinta': '30', 'cuarenta': '40',
-                'cincuenta': '50', 'sesenta': '60', 'setenta': '70', 'ochenta': '80',
-                'noventa': '90', 'cien': '100',
               };
               
               const specialMap = {
                 'guion bajo': '_', 'guión bajo': '_', underscore: '_',
                 'guion medio': '-', 'guión medio': '-', menos: '-',
-                punto: '.', dot: '.', arroba: '@', 'at': '@',
-                // Añadir más variantes para arroba
-                'a-': '@', 'a roba': '@', 'at sign': '@', 'a rroba': '@',
-                'a rova': '@', 'arraba': '@', 'a-roba': '@',
-                'a-rroba': '@', 'a-raba': '@',
+                punto: '.', dot: '.', arroba: '@',
               };
               
               function normalizeSpokenEmail(text) {
-                // Eliminar frases introductorias comunes
                 let processed = text.toLowerCase();
-                processed = processed.replace(/mi (correo|email|mail|e-mail|dirección)( electrónico)? es /i, '');
-                processed = processed.replace(/ es mi (correo|email|mail|e-mail|dirección)( electrónico)?/i, '');
-                
-                // Reemplazar palabras especiales
+              
                 for (const [key, val] of Object.entries(specialMap)) {
                   processed = processed.replaceAll(key, ` ${val} `);
                 }
-                
-                // Manejar espacios y separar palabras
+              
                 const words = processed.split(/\s+/).filter(Boolean);
-                
-                // Detectar y preservar partes alfanuméricas antes de mapear
-                const emailParts = words.map(w => {
-                  // Si es alfanumérico, preservarlo
-                  if (/^[a-zA-Z0-9._-]+$/.test(w)) {
-                    return w;
-                  }
-                  // Si es una letra o número hablado, mapearlo
-                  return letterToCharMap[w] || w;
-                }).join('');
-                
-                console.log('Texto procesado para email:', processed);
-                console.log('Email normalizado:', emailParts);
-                
+                const emailParts = words.map(w => letterToCharMap[w] || w).join('');
                 return emailParts;
               }
               
               function confirmEmail(email) {
                 setEmail(email);
-                
-                // Usar solo mensajes de audio que sabemos que existen
                 queueAudioMessage(AUDIO_MESSAGES.emailConfirmed);
-                
-                // Esperar un poco antes de reproducir el siguiente mensaje
-                setTimeout(() => {
-                  queueAudioMessage(AUDIO_MESSAGES.passwordConfirmed);
-                }, 500);
+                queueAudioMessage(AUDIO_MESSAGES.passwordConfirmed);
               
                 let verbalEmail = '';
                 for (const char of email) {
@@ -748,68 +880,19 @@ const AccessibleLogin = () => {
               }
               
               function handleEmailRecognition(normalizedText) {
-                console.log('🔍 Analizando texto para email:', normalizedText);
-                
-                // Primero, eliminar espacios antes del @ para manejar casos como "usuario h 25@gmail.com"
-                let processedText = normalizedText;
-                const atIndex = processedText.indexOf('@');
-                if (atIndex > 0) {
-                  // Reemplazar espacios con nada en la parte del nombre de usuario
-                  const usernamePart = processedText.substring(0, atIndex).replace(/\s+/g, '');
-                  const domainPart = processedText.substring(atIndex);
-                  processedText = usernamePart + domainPart;
-                  console.log('🔄 Procesando email con espacios:', normalizedText, '→', processedText);
-                }
-                
-                // Intentar extraer directamente un email completo
-                const directEmailRegex = /([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
-                const directMatch = processedText.match(directEmailRegex);
-                
-                if (directMatch) {
-                  const email = `${directMatch[1]}@${directMatch[2]}`;
-                  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    console.log('✅ Email reconocido directamente:', email);
-                    confirmEmail(email);
-                    return;
-                  }
-                }
-                
-                // Si no hay match directo, procesar el texto para reconocer partes del email
                 const spokenText = normalizeSpokenEmail(normalizedText);
                 const emailRegex = /([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
                 const match = spokenText.match(emailRegex);
-                
+              
                 if (match) {
                   const email = `${match[1]}@${match[2]}`;
                   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    console.log('✅ Email reconocido después de procesamiento:', email);
                     confirmEmail(email);
                   } else {
                     console.warn('❌ Email inválido después de procesar:', email);
-                    // Intentar corregir errores comunes
-                    let correctedEmail = email;
-                    
-                    // Corregir dominios comunes mal escritos
-                    if (email.includes('@gmail')) correctedEmail = correctedEmail.replace(/@gmail[^.]*/, '@gmail.com');
-                    if (email.includes('@hotmail')) correctedEmail = correctedEmail.replace(/@hotmail[^.]*/, '@hotmail.com');
-                    if (email.includes('@yahoo')) correctedEmail = correctedEmail.replace(/@yahoo[^.]*/, '@yahoo.com');
-                    if (email.includes('@outlook')) correctedEmail = correctedEmail.replace(/@outlook[^.]*/, '@outlook.com');
-                    
-                    if (correctedEmail !== email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correctedEmail)) {
-                      console.log('✅ Email corregido automáticamente:', correctedEmail);
-                      confirmEmail(correctedEmail);
-                    }
                   }
                 } else {
                   console.log('⚠️ Texto no contiene email reconocido:', spokenText);
-                  
-                  // Intentar extraer partes de un posible email
-                  const usernamePart = /([a-zA-Z0-9._-]+)/i.exec(spokenText);
-                  if (usernamePart && usernamePart[1].length > 3) {
-                    console.log('⚠️ Posible nombre de usuario de email detectado:', usernamePart[1]);
-                    // No confirmar automáticamente, solo mostrar mensaje de ayuda
-                    queueAudioMessage(AUDIO_MESSAGES.askEmail || AUDIO_MESSAGES.notUnderstood);
-                  }
                 }
               }
               handleEmailRecognition(normalizedText);
@@ -866,9 +949,6 @@ const AccessibleLogin = () => {
         // Si llegamos aquí, no se reconoció ningún comando
         console.log('❌ Comando no reconocido');
         console.log('Comandos disponibles: "iniciar sesión", "registrarse", "voz", "facial", "cancelar"');
-        if (sessionStorage.getItem('brailleactivado') === 'false') {
-            queueAudioMessage(AUDIO_MESSAGES.notUnderstood);
-        }
     };
 
     const handleStopListening = () => {
@@ -899,9 +979,6 @@ const AccessibleLogin = () => {
         // Guardar el audioBlob
         setAudioBlob(audioBlob);
         
-        // También guardar en window para que FaceRecorder pueda accederlo
-        window.recordedAudioBlob = audioBlob;
-        
         // Registro de datos sobre el audio grabado
         const audioBlobSizeKB = (audioBlob.size / 1024).toFixed(2);
         console.log("\n%c========== DATOS DE GRABACIÓN DE VOZ ==========", "color: #4CAF50; font-weight: bold; font-size: 14px;");
@@ -927,7 +1004,7 @@ const AccessibleLogin = () => {
             
             if (cameraButton) {
                 console.log('✅ Botón de cámara encontrado por ID. Activando captura facial automáticamente...');
-                // Introducir un pequeño retraso para asegurar que el DOM esté listo
+                // Introducir un pequeño retraso para asegurar que el DOM está listo
                 setTimeout(() => {
                     cameraButton.click();
                     console.log('✅ Clic en botón de cámara ejecutado');
@@ -982,7 +1059,7 @@ const AccessibleLogin = () => {
         setTimeout(() => {
             // Reproducir mensaje de éxito
             setPlayingAudio(true);
-            queueAudioMessage(AUDIO_MESSAGES.voiceRecordingComplete);
+            queueAudioMessage(AUDIO_MESSAGES.loginSuccess);
             
             // Esperar a que termine el audio de éxito antes de reproducir instrucciones para la captura facial
             setTimeout(() => {
@@ -1154,112 +1231,6 @@ const AccessibleLogin = () => {
         // No reproducir automáticamente el mensaje de bienvenida
         // La reproducción se manejará a través de handleUserInteraction después de la primera interacción
         
-    }, []);
-
-    // Función para reproducir un mensaje con respaldo de síntesis de voz
-    const playWithFallback = (messageKey, fallbackText) => {
-        try {
-            // Primero verificar si el audio existe
-            fetch(`${window.location.origin}/audio/${messageKey}.mp3`, { method: 'HEAD' })
-                .then(response => {
-                    if (response.ok) {
-                        console.log(`Reproduciendo audio ${messageKey} desde archivo...`);
-                        queueAudioMessage(messageKey);
-                    } else {
-                        console.log(`Audio ${messageKey} no encontrado, usando síntesis de voz...`);
-                        // Si no existe el archivo, usar síntesis de voz como respaldo
-                        try {
-                            const msg = new SpeechSynthesisUtterance();
-                            msg.text = fallbackText;
-                            msg.lang = 'es-ES';
-                            msg.rate = 0.9; // Velocidad ligeramente más lenta para mejor comprensión
-                            window.speechSynthesis.speak(msg);
-                        } catch (synthError) {
-                            console.error(`Error con síntesis de voz: ${synthError}`);
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error(`Error al verificar audio ${messageKey}:`, error);
-                });
-        } catch (error) {
-            console.error(`Error al reproducir mensaje ${messageKey}:`, error);
-        }
-    };
-
-    // Función para manejar la contraseña en braille
-// Auxiliar para esperar un tiempo
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Función para manejar la contraseña en braille
-const handleBraillePasswordComplete = async (braillePassword) => {
-    queueAudioMessage(AUDIO_MESSAGES.braillePasswordSaved);
-    console.log("Contraseña braille completada:", braillePassword);
-    setPassword(braillePassword);
-    setShowBrailleInput(false);
-    setIsBrailleComplete(true);
-
-    sessionStorage.setItem('username', username);
-    sessionStorage.setItem('email', email);
-    sessionStorage.setItem('password', braillePassword);
-    
-    console.log("\n%c========== DATOS DE REGISTRO CAPTURADOS ==========", "color: #4CAF50; font-weight: bold; font-size: 14px;");
-    console.log("%cUsuario: %c" + username, "color: #2196F3; font-weight: bold", "color: #000; font-weight: normal");
-    console.log("%cCorreo: %c" + email, "color: #2196F3; font-weight: bold", "color: #000; font-weight: normal");
-    console.log("%cContraseña: %c" + braillePassword, "color: #2196F3; font-weight: bold", "color: #000; font-weight: normal");
-    console.log("%c===================================================", "color: #4CAF50; font-weight: bold; font-size: 14px;");
-
-    // Esperar a que el DOM termine de renderizar VoiceRecorder
-    await wait(3000);
-
-    try {
-        console.log('🔍 Buscando botón de grabación para activarlo automáticamente...');
-        const selector = '.voice-recorder-container button';
-        const recordButton = document.querySelector(selector);
-        
-        if (recordButton) {
-            console.log('✅ Botón de grabación encontrado. Activando grabación de voz automáticamente...');
-            recordButton.click();
-        } else {
-            console.error('❌ No se encontró el botón de grabación');
-        }
-    } catch (error) {
-        console.error('Error al activar la grabación de voz:', error);
-    }
-};
-
-
-    // Verificar el estado de showBrailleInput
-    useEffect(() => {
-        if (showBrailleInput) {
-            console.log('🔐 showBrailleInput ha cambiado a true - Iniciando creación de contraseña braille');
-            // Detener reconocimiento de voz si está activo
-            if (isListening) {
-                handleStopListening();
-            }
-            
-        }
-    }, [showBrailleInput]);
-
-    const [wasRegistered, setWasRegistered] = useState(false);
-
-    useEffect(() => {
-      const registeredFlag = sessionStorage.getItem('registered');
-      if (registeredFlag === 'true') {
-        setWasRegistered(true);
-        sessionStorage.removeItem('registered'); // Limpiar para que no se muestre otra vez
-      }
-    }, []);
-
-    // Cleanup global variables when component unmounts
-    useEffect(() => {
-        return () => {
-            // Cleanup window objects when component unmounts
-            if (window.recordedAudioBlob) {
-                console.log("🧹 Limpiando audio blob global al desmontar AccessibleLogin");
-                window.recordedAudioBlob = null;
-            }
-        };
     }, []);
 
     return (
