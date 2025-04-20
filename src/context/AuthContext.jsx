@@ -71,14 +71,16 @@ export const AuthProvider = ({ children }) => {
         });
         
         try {
-            // Guardar datos del usuario
-            localStorage.setItem('user', JSON.stringify({
+
+            sessionStorage.setItem('user', JSON.stringify({
                 username: userData.username,
                 email: userData.email
             }));
             
             // Guardar token
-            localStorage.setItem('token', userData.access_token);
+            sessionStorage.setItem('sijala', true)
+            sessionStorage.setItem('username', userData.username)
+            sessionStorage.setItem('email', userData.email)
             
             logAuth('Login exitoso', { 
                 username: userData.username,
@@ -106,6 +108,8 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('user');
             setUser(null);
             logAuth('Logout exitoso');
+            localStorage.clear();
+            sessionStorage.clear();
         } catch (error) {
             console.error('[AUTH] Error durante el logout:', error);
             logAuth('Error durante el logout', { error: error.message });

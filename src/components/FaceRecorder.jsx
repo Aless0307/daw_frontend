@@ -184,10 +184,20 @@ const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
                     })
                     .then(async response => {
                         const data = await response.json();
-                    
+                        sessionStorage.clear();
                         if (!response.ok) {
-                            console.error("❌ Error al registrar:", data.detail);
-                            throw new Error(data.detail || 'Error desconocido en el registro');
+                            // Mostrar el error completo si es un array o un objeto
+                            let errorMsg = '';
+                            if (Array.isArray(data.detail)) {
+                                errorMsg = data.detail.map(e => e.msg || JSON.stringify(e)).join(' | ');
+                            } else if (typeof data.detail === 'object') {
+                                errorMsg = JSON.stringify(data.detail);
+                            } else {
+                                errorMsg = data.detail || JSON.stringify(data);
+                            }
+                            setError(errorMsg);
+                            console.error("❌ Error al registrar:", errorMsg);
+                            throw new Error(errorMsg);
                         }
                     
                         console.log("✅ Registro exitoso:", data);

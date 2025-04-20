@@ -92,7 +92,7 @@ export class SpeechProcessor {
                                 'registrarme', 'inscribir', 'registra', 'registrame', 'inscribirte'];
         const loginKeywords = ['iniciar', 'login', 'entrar', 'sesión', 'iniciar sesión', 'entrar sesión', 
                                'inicia', 'ingreso', 'ingresar', 'acceder', 'acceso'];
-        const voiceKeywords = ['voz', 'reconocimiento de voz', 'hablar', 'por voz'];
+        const voiceKeywords = ['vocal', 'reconocimiento vocal', 'hablar', 'por voz', 'reconocimiento de voz', 'voz'];
         const faceKeywords = ['cara', 'facial', 'reconocimiento facial', 'rostro', 'mi cara', 'fotografía'];
         const cancelKeywords = ['cancelar', 'volver', 'regresar', 'atrás', 'salir', 'cancela'];
         
@@ -103,6 +103,7 @@ export class SpeechProcessor {
             console.log('✅ Comando reconocido: iniciar sesión');
             this.updateAppState('login');
             return;
+            
         } 
         
         if (containsAny(registerKeywords)) {
@@ -136,7 +137,7 @@ export class SpeechProcessor {
         
         // Si llegamos aquí, no se reconoció ningún comando
         console.log('❌ Comando no reconocido');
-        console.log('Comandos disponibles: "iniciar sesión", "registrarse", "voz", "facial", "cancelar"');
+        console.log('Comandos disponibles: "iniciar sesión", "registrarse", "vocal", "voz", "facial", "cancelar"');
     };
 
     // Funciones auxiliares para el procesamiento de email

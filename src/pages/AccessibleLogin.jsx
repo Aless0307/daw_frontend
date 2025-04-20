@@ -4,11 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import {playBeep, playPredefinedMessage } from '../services/audioService';
 import { config } from '../config';
 import VoiceRecorder from '../components/VoiceRecorder';
-import VoiceLogin from '../components/VoiceLogin';
 import FaceRecorder from '../components/FaceRecorder';
 import FaceLogin from '../components/FaceLogin';
-import BraillePassword from '../components/BraillePassword'
+import BrailleLogin from '../components/BrailleLogin';
+import BraillePasswordLogin from '../components/BraillePasswordLogin';
+import BraillePassword from '../components/BraillePassword';
 import { useLocation } from 'react-router-dom';;
+import VoiceLoginRecorder from '../components/VoiceLoginRecorder';
 
 // Claves de los mensajes de audio predefinidos
 const AUDIO_MESSAGES = {
@@ -41,12 +43,17 @@ const AUDIO_MESSAGES = {
     
     // Nuevo mensaje para la captura facial
     faceCapture: "faceCapture",
-    emailHelp: "emailHelp"
+    emailHelp: "emailHelp",
+    loginOptions: "loginOptions"
 };
-
 
 // Clave para almacenar el último mensaje en localStorage
 const LAST_MESSAGE_KEY = 'accessibleLogin_lastAudioMessage';
+
+// --- Agregar arrays de keywords globales ---
+const voiceKeywords = ['vocal', 'reconocimiento vocal', 'hablar', 'por voz', 'reconocimiento de voz', 'voz'];
+const faceKeywords = ['cara', 'facial', 'reconocimiento facial', 'rostro', 'mi cara', 'fotografía'];
+const brailleKeywords = ['contraseña', 'braille', 'clave', 'password', 'escribir', 'teclear'];
 
 const AccessibleLogin = () => {
     console.log('Renderizando AccessibleLogin');
@@ -69,7 +76,7 @@ const AccessibleLogin = () => {
     
     // Estados para datos de formulario
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [password, setPassword] = useState(''); // Asegura que existe este estado
     const [username, setUsername] = useState('');
     
     // Estados para grabación de voz y captura de imagen
@@ -82,6 +89,13 @@ const AccessibleLogin = () => {
     const [registrationStep, setRegistrationStep] = useState(null); // null, 'braille', 'voice', 'face', 'complete'
     const [voiceRegistrationComplete, setVoiceRegistrationComplete] = useState(false);
     const [playingAudio, setPlayingAudio] = useState(false);
+
+    // Estados para login accesible
+    const [loginStep, setLoginStep] = useState(null); // null, 'askMethod', 'askEmail', 'chooseMethod', 'braille', 'success', 'error'
+    const [loginMethod, setLoginMethod] = useState(null); // 'voice', 'face', 'braille', null
+
+    // Estados para mostrar el grabador de voz
+    const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
 
     // Referencias
     const audioQueueRef = useRef([]);
@@ -97,6 +111,7 @@ const AccessibleLogin = () => {
 
     // Dentro de los estados en la parte superior del componente AccessibleLogin
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Función para interrumpir la reproducción de audio
     const stopCurrentAudio = () => {
@@ -306,9 +321,6 @@ const AccessibleLogin = () => {
                 }
             };
 
-            // Iniciar un intervalo para verificar el silencio cada 100ms
-            silenceDetectionInterval = setInterval(checkForSilence, 100);
-
             recognition.onstart = () => {
                 console.log('🎙️ Reconocimiento de voz iniciado');
             };
@@ -396,7 +408,7 @@ const AccessibleLogin = () => {
                 setShowVoiceLogin(false);
                 setShowFaceLogin(false);
                 setIsLoggingIn(true);
-                // Reproducir audio después de un breve retraso para asegurar que el DOM esté actualizado
+                startAccessibleLogin();
                 setTimeout(() => {
                     console.log('Reproduciendo audio de login...');
                     queueAudioMessage(AUDIO_MESSAGES.login);
@@ -527,9 +539,7 @@ const AccessibleLogin = () => {
                             setIsRegistering(true);
                             // NO reproducir audio nuevamente después del cambio forzado
                             // Se eliminó la siguiente sección para evitar duplicación:
-                            // setTimeout(() => {
-                            //     queueAudioMessage(AUDIO_MESSAGES.register);
-                            // }, 300);
+                            // setTimeout(() => queueAudioMessage(AUDIO_MESSAGES.register), 300);
                         }, 50); // Restaurar valor deseado
                         break;
                     case 'voiceLogin':
@@ -563,6 +573,107 @@ const AccessibleLogin = () => {
         }, 200);
     };
 
+    // ====================
+    // FUNCION REUTILIZADA PARA DETECTAR EMAIL EN LOGIN Y REGISTRO
+    // ====================
+    const detectAndConfirmEmail = (normalizedText) => {
+        // Patrones mejorados para reconocer correos electrónicos con frases introductorias
+        const emailPattern1 = /mi (correo|email|mail|e-mail|dirección)( electrónico)? es ([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i;
+        const emailPattern2 = /([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}) es mi (correo|email|mail|e-mail|dirección)( electrónico)?/i;
+
+        let match;
+        const playOptionsAudio = () => {
+            // Reproduce un audio claro con las opciones disponibles
+            queueAudioMessage(AUDIO_MESSAGES.emailConfirmed);
+            setTimeout(() => {
+                queueAudioMessage('loginOptions'); // Debes tener este audio generado, si no existe, se puede crear
+            }, 1200);
+        };
+        if ((match = normalizedText.match(emailPattern1))) {
+            const extractedEmail = `${match[3]}@${match[4]}`;
+            console.log('✅ Correo electrónico reconocido (patrón 1):', extractedEmail);
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(extractedEmail)) {
+                setEmail(extractedEmail);
+                if (isListening) handleStopListening();
+                if (loginStep !== 'chooseMethod') {
+                    setLoginStep('chooseMethod');
+                    playOptionsAudio();
+                }
+                return true;
+            }
+        } else if ((match = normalizedText.match(emailPattern2))) {
+            const extractedEmail = `${match[1]}@${match[2]}`;
+            console.log('✅ Correo electrónico reconocido (patrón 2):', extractedEmail);
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(extractedEmail)) {
+                setEmail(extractedEmail);
+                if (isListening) handleStopListening();
+                if (loginStep !== 'chooseMethod') {
+                    setLoginStep('chooseMethod');
+                    playOptionsAudio();
+                }
+                return true;
+            }
+        }
+        // Normalización adicional (hablado)
+        const letterToCharMap = {
+            a: 'a', be: 'b', ce: 'c', de: 'd', e: 'e', efe: 'f', ge: 'g',
+            hache: 'h', i: 'i', jota: 'j', ka: 'k', ele: 'l', eme: 'm', ene: 'n',
+            eñe: 'ñ', o: 'o', pe: 'p', cu: 'q', ere: 'r', ese: 's', te: 't',
+            u: 'u', ve: 'v', uve: 'v', 'doble ve': 'w', equis: 'x', ye: 'y', zeta: 'z',
+            'i griega': 'y', cero: '0', uno: '1', dos: '2', tres: '3', cuatro: '4',
+            cinco: '5', seis: '6', siete: '7', ocho: '8', nueve: '9',
+            'veinticinco': '25', 'setenta y ocho': '78', 'treinta y cuatro': '34',
+            'diez': '10', 'once': '11', 'doce': '12', 'trece': '13', 'catorce': '14',
+            'quince': '15', 'dieciséis': '16', 'diecisiete': '17', 'dieciocho': '18',
+            'diecinueve': '19', 'veinte': '20', 'treinta': '30', 'cuarenta': '40',
+            'cincuenta': '50', 'sesenta': '60', 'setenta': '70', 'ochenta': '80',
+            'noventa': '90', 'cien': '100',
+        };
+        const specialMap = {
+            'guion bajo': '_', 'guión bajo': '_', underscore: '_',
+            'guion medio': '-', 'guión medio': '-', menos: '-',
+            punto: '.', dot: '.', arroba: '@', 'at': '@',
+            'a-': '@', 'a roba': '@', 'at sign': '@', 'a rroba': '@',
+            'a rova': '@', 'arraba': '@', 'a-roba': '@',
+            'a-rroba': '@', 'a-raba': '@',
+        };
+        function normalizeSpokenEmail(text) {
+            let processed = text.toLowerCase();
+            processed = processed.replace(/mi (correo|email|mail|e-mail|dirección)( electrónico)? es /i, '');
+            processed = processed.replace(/ es mi (correo|email|mail|e-mail|dirección)( electrónico)?/i, '');
+            for (const [key, val] of Object.entries(specialMap)) {
+                processed = processed.replaceAll(key, ` ${val} `);
+            }
+            const words = processed.split(/\s+/).filter(Boolean);
+            const emailParts = words.map(w => {
+                if (/^[a-zA-Z0-9._-]+$/.test(w)) {
+                    return w;
+                }
+                return letterToCharMap[w] || w;
+            }).join('');
+            console.log('Texto procesado para email:', processed);
+            console.log('Email normalizado:', emailParts);
+            sessionStorage.setItem('correovocal', emailParts);
+            return emailParts;
+        }
+        const spokenText = normalizeSpokenEmail(normalizedText);
+        const emailRegex = /([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+        const matchSpoken = spokenText.match(emailRegex);
+        if (matchSpoken) {
+            const email = `${matchSpoken[1]}@${matchSpoken[2]}`;
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                setEmail(email);
+                if (isListening) handleStopListening();
+                if (loginStep !== 'chooseMethod') {
+                    setLoginStep('chooseMethod');
+                    playOptionsAudio();
+                }
+                return true;
+            }
+        }
+        return false;
+    };
+
     // Función para procesar el texto reconocido
     const processUserSpeech = (text) => {
         console.log('===================== PROCESANDO TEXTO =====================');
@@ -576,18 +687,18 @@ const AccessibleLogin = () => {
             return;
         }
         
-        // Normalizar el texto para facilitar la detección de comandos
         const normalizedText = text.toLowerCase().trim();
-        
-        // Función para verificar si el texto contiene alguna de las palabras clave
-        const containsAny = (keywords) => {
-            return keywords.some(keyword => normalizedText.includes(keyword));
-        };
-        
-        // Si estamos en modo registro, verificar si el usuario está proporcionando datos
+        const containsAny = (keywords) => keywords.some(keyword => normalizedText.includes(keyword));
+
+        // 1. Si estamos en login (no registro), aún no hay email, y no estamos en métodos alternativos, primero intenta reconocer el email
+        if (isLoggingIn && !email && !showVoiceLogin && !showFaceLogin && !showBrailleInput) {
+            if (detectAndConfirmEmail(normalizedText)) {
+                return; // Si reconoce el email, no sigue procesando comandos
+            }
+        }
+
+        // 2. Si estamos en registro, procesa datos de registro (sin cambios)
         if (isRegistering) {
-            console.log('🧩 Procesando input durante registro');
-            
             // Patrones para reconocer datos de registro
             const usernamePattern1 = /mi nombre (de usuario )?es\s+([a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ]+)/i;
             const usernamePattern2 = /([a-zA-Z0-9áéíóúÁÉÍÓÚüÜñÑ]+)\s+es mi nombre/i;
@@ -815,59 +926,51 @@ const AccessibleLogin = () => {
               handleEmailRecognition(normalizedText);
         }
         
-        // Procesar comandos de navegación general
-        // Palabras clave para cada acción
+        // 3. Procesar comandos generales SOLO si no estamos capturando email
         const registerKeywords = ['registrar', 'registro', 'crear cuenta', 'nueva cuenta', 'inscribirme', 
                                 'registrarme', 'inscribir', 'registra', 'registrame', 'inscribirte'];
         const loginKeywords = ['iniciar', 'login', 'entrar', 'sesión', 'iniciar sesión', 'entrar sesión', 
                                'inicia', 'ingreso', 'ingresar', 'acceder', 'acceso'];
-        const voiceKeywords = ['voz', 'reconocimiento de voz', 'hablar', 'por voz'];
-        const faceKeywords = ['cara', 'facial', 'reconocimiento facial', 'rostro', 'mi cara', 'fotografía'];
         const cancelKeywords = ['cancelar', 'volver', 'regresar', 'atrás', 'salir', 'cancela'];
-        
+
         console.log('Analizando comando en texto normalizado:', normalizedText);
-        
-        // Procesar comandos de navegación general primero, independientemente del estado actual
+
         if (containsAny(loginKeywords)) {
             console.log('✅ Comando reconocido: iniciar sesión');
             updateAppState('login');
             return;
         } 
-        
         if (containsAny(registerKeywords)) {
             console.log('✅ Comando reconocido: registrarse');
             console.log('Palabras clave detectadas: registrar, registro, crear cuenta, etc.');
             updateAppState('register');
             return;
         } 
-        
-        if (containsAny(voiceKeywords)) {
+        if (voiceKeywords.some(keyword => normalizedText.includes(keyword))) {
             console.log('✅ Comando reconocido: login por voz');
             updateAppState('voiceLogin');
             return;
         } 
-        
-        if (containsAny(faceKeywords)) {
+        if (faceKeywords.some(keyword => normalizedText.includes(keyword))) {
             console.log('✅ Comando reconocido: login facial');
             updateAppState('faceLogin');
             return;
         }
-
-        // Si llegamos aquí, no fue un comando de navegación principal
-        // Ahora procesamos comandos específicos del estado actual
-        if (isRegistering || showVoiceLogin || showFaceLogin) {
-            if (containsAny(cancelKeywords)) {
-                console.log('✅ Comando reconocido: cancelar/volver');
-                updateAppState('backToMain');
-                return;
-            }
+        if ((isRegistering || showVoiceLogin || showFaceLogin) && containsAny(cancelKeywords)) {
+            console.log('✅ Comando reconocido: cancelar/volver');
+            updateAppState('backToMain');
+            return;
         }
-        
+
         // Si llegamos aquí, no se reconoció ningún comando
         console.log('❌ Comando no reconocido');
         console.log('Comandos disponibles: "iniciar sesión", "registrarse", "voz", "facial", "cancelar"');
         if (sessionStorage.getItem('brailleactivado') === 'false') {
             queueAudioMessage(AUDIO_MESSAGES.notUnderstood);
+        }
+        // Si estamos en login, delega a processLoginSpeech como fallback
+        if (!isRegistering && isLoggingIn) {
+            processLoginSpeech(text);
         }
     };
 
@@ -1041,25 +1144,20 @@ const AccessibleLogin = () => {
     };
 
     // Función para enviar formulario
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e, isBraille = false) => {
         e.preventDefault();
         setError('');
         setSuccess('');
+        setIsSubmitting(true);
 
-        // Imprimir los datos del formulario en la consola
-        console.log('Datos del formulario enviado:', {
-            username,
-            email,
-            password,
-            isRegistering,
-            tieneAudioBiometrico: !!audioBlob,
-            tieneFotoBiometrica: !!photoBlob
-        });
+        const password = sessionStorage.getItem('email');
+        sessionStorage.setItem('password', password);
+        sessionStorage.setItem('email', email);
 
-        // Validar campos
         if (isRegistering) {
             if (!username || !email || !password) {
                 setError('Por favor completa todos los campos');
+                setIsSubmitting(false);
                 return;
             }
 
@@ -1067,7 +1165,6 @@ const AccessibleLogin = () => {
             formData.append('username', username);
             formData.append('email', email);
             formData.append('password', password);
-
 
             if(audioBlob){
                 formData.append('voice_recording', audioBlob, 'voice.wav');
@@ -1078,6 +1175,7 @@ const AccessibleLogin = () => {
             }
 
             try {
+                console.log('DEBUG: password al enviar login:', password);
                 const response = await fetch(`${config.API_URL}/auth/register`, {
                     method: 'POST',
                     body: formData
@@ -1102,59 +1200,96 @@ const AccessibleLogin = () => {
                 setError('Error al conectar con el servidor');
                 queueAudioMessage(AUDIO_MESSAGES.loginError);
             }
-        } else {
-            if (!username || !password) {
-                setError('Por favor completa todos los campos');
-                return;
-            }
-
+        } 
+        else if (isBraille) {
+            sessionStorage.clear();
+            // LOGIN BRAILLE
             try {
-                const loginData = new URLSearchParams({username, password});
-                
+                const formData = new FormData();
+                formData.append('username', email);
+                formData.append('password', password);
+        
+                console.log('📤 Enviando datos al backend:', {
+                    endpoint: `${config.API_URL}/auth/login`,
+                    username: email,
+                    password
+                });
+        
                 const response = await fetch(`${config.API_URL}/auth/login`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: loginData
+                    body: formData
                 });
-
+        
+                console.log('📥 Respuesta recibida del servidor:', response);
+        
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Error en el inicio de sesión');
+                    const errData = await response.json();
+                    let errorMsg = 'Error en el inicio de sesión';
+        
+                    if (typeof errData.detail === 'string') errorMsg = errData.detail;
+                    else if (typeof errData.msg === 'string') errorMsg = errData.msg;
+                    else if (Array.isArray(errData) && errData.length && typeof errData[0].msg === 'string') errorMsg = errData[0].msg;
+                    else errorMsg = JSON.stringify(errData);
+        
+                    console.error('❌ Error en login:', errorMsg);
+                    setError(errorMsg);
+                    setIsSubmitting(false);
+                    return;
                 }
-
+        
                 const data = await response.json();
-                
+                console.log('✅ Login exitoso. Datos recibidos:', data);
+                const token = data.access_token;
+                sessionStorage.setItem('access_token', token);
                 if (!data.access_token) {
+                    console.error('❌ No se recibió access_token en la respuesta.');
                     throw new Error('No se recibió token en la respuesta');
                 }
-
-                const loginDataToSend = {
+        
+                login({
                     token: data.access_token,
-                    username: data.username || username,
+                    username: data.username || email,
                     email: data.email || email
-                };
-
-                login(loginDataToSend);
-                queueAudioMessage(AUDIO_MESSAGES.loginSuccess);
-                setTimeout(() => navigate('/home'), 2000);
+                });
+        
+                console.log('➡️ Login ejecutado correctamente. Redirigiendo a /home...');
+                navigate('/home');
             } catch (err) {
-                console.error('Error en el inicio de sesión:', err);
+                console.error('🚨 Error inesperado al iniciar sesión:', err);
                 setError('Error al conectar con el servidor');
-                queueAudioMessage(AUDIO_MESSAGES.loginError);
+                setIsSubmitting(false);
             }
+            // Termina LOGIN BRAILLE            
+        }
+        else {
+            // LOGIN
+            const email = sessionStorage.getItem('email');
+            const password = sessionStorage.getItem('password');
+            if (!email || !password) {
+                console.log('eL ERROR FUE ANTES\n########################################################');
+                setError('Por favor completa todos los campos');
+                setIsSubmitting(false);
+                return;
+            }
+            
         }
     };
 
-    // Modificar el useEffect que reproduce la bienvenida al cargar el componente
-    useEffect(() => {
-        console.log('🎙️ Inicializando componente de login accesible');
-        
-        // No reproducir automáticamente el mensaje de bienvenida
-        // La reproducción se manejará a través de handleUserInteraction después de la primera interacción
-        
-    }, []);
+    // Función para iniciar el flujo de login accesible
+    const startAccessibleLogin = () => {
+        setLoginStep('askEmail');
+        setShowVoiceLogin(false);
+        setShowFaceLogin(false);
+        setShowBrailleInput(false);
+        setIsBrailleComplete(false);
+        setLoginMethod(null);
+        setEmail('');
+        setPassword('');
+        queueAudioMessage('login');
+        setTimeout(() => {
+            queueAudioMessage('emailHelp');
+        }, 2000);
+    };
 
     // Función para reproducir un mensaje con respaldo de síntesis de voz
     const playWithFallback = (messageKey, fallbackText) => {
@@ -1182,52 +1317,42 @@ const AccessibleLogin = () => {
                 .catch(error => {
                     console.error(`Error al verificar audio ${messageKey}:`, error);
                 });
-        } catch (error) {
-            console.error(`Error al reproducir mensaje ${messageKey}:`, error);
+        } catch (err) {
+            // Este catch solo captura errores sincrónicos
+            console.error("Error en playWithFallback:", err);
         }
     };
 
     // Función para manejar la contraseña en braille
-// Auxiliar para esperar un tiempo
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Función para manejar la contraseña en braille
-const handleBraillePasswordComplete = async (braillePassword) => {
-    queueAudioMessage(AUDIO_MESSAGES.braillePasswordSaved);
-    console.log("Contraseña braille completada:", braillePassword);
-    setPassword(braillePassword);
-    setShowBrailleInput(false);
-    setIsBrailleComplete(true);
-
-    sessionStorage.setItem('username', username);
-    sessionStorage.setItem('email', email);
-    sessionStorage.setItem('password', braillePassword);
-    
-    console.log("\n%c========== DATOS DE REGISTRO CAPTURADOS ==========", "color: #4CAF50; font-weight: bold; font-size: 14px;");
-    console.log("%cUsuario: %c" + username, "color: #2196F3; font-weight: bold", "color: #000; font-weight: normal");
-    console.log("%cCorreo: %c" + email, "color: #2196F3; font-weight: bold", "color: #000; font-weight: normal");
-    console.log("%cContraseña: %c" + braillePassword, "color: #2196F3; font-weight: bold", "color: #000; font-weight: normal");
-    console.log("%c===================================================", "color: #4CAF50; font-weight: bold; font-size: 14px;");
-
-    // Esperar a que el DOM termine de renderizar VoiceRecorder
-    await wait(3000);
-
-    try {
-        console.log('🔍 Buscando botón de grabación para activarlo automáticamente...');
-        const selector = '.voice-recorder-container button';
-        const recordButton = document.querySelector(selector);
+    const handleBrailleLogin = (email, BraillePasswordLogin) => {
+        setPassword(BraillePasswordLogin);
+        setShowBrailleInput(false);
+        setIsBrailleComplete(true);
+        sessionStorage.setItem('email', email);
+        sessionStorage.setItem('passwordLogin', BraillePasswordLogin);
+        console.log("esto se ejecuta antes\n#################################################################################################################")
+        setTimeout(() => {
+            handleSubmit({ preventDefault: () => {} }, true); // true indica login braille
+        }, 1000); // puedes ajustar este tiempo si necesitas más margen
         
-        if (recordButton) {
-            console.log('✅ Botón de grabación encontrado. Activando grabación de voz automáticamente...');
-            recordButton.click();
-        } else {
-            console.error('❌ No se encontró el botón de grabación');
-        }
-    } catch (error) {
-        console.error('Error al activar la grabación de voz:', error);
-    }
-};
+    };
 
+    const handleCancelBrailleLogin = () => {
+        setShowBrailleInput(false);
+        setLoginStep('chooseMethod');
+    };
+
+    // Función para manejar la contraseña en braille durante el registro
+    const handleBraillePasswordComplete = (braillePassword) => {
+        setPassword(braillePassword);
+        setShowBrailleInput(false);
+        setIsBrailleComplete(true);
+        sessionStorage.setItem('password', braillePassword);
+        sessionStorage.setItem('email', email);
+        sessionStorage.setItem('username', username);
+        setShowVoiceRecorder(true); // Nuevo estado para mostrar el grabador de voz
+        // Puedes agregar lógica adicional aquí, como avanzar al siguiente paso del registro
+    };
 
     // Verificar el estado de showBrailleInput
     useEffect(() => {
@@ -1241,6 +1366,10 @@ const handleBraillePasswordComplete = async (braillePassword) => {
         }
     }, [showBrailleInput]);
 
+    useEffect(() => {
+        console.log('DEBUG password state:', password);
+    }, [password]);
+
     const [wasRegistered, setWasRegistered] = useState(false);
 
     useEffect(() => {
@@ -1250,6 +1379,47 @@ const handleBraillePasswordComplete = async (braillePassword) => {
         sessionStorage.removeItem('registered'); // Limpiar para que no se muestre otra vez
       }
     }, []);
+
+    // Función para procesar lo que dice el usuario durante login
+    const processLoginSpeech = (text) => {
+        const normalizedText = text.trim().toLowerCase();
+        if (loginStep === 'askEmail') {
+            // Intentar reconocer correo
+            handleEmailRecognition(normalizedText);
+            // Si se reconoce, pasar al siguiente paso
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedText) || email) {
+                setLoginStep('chooseMethod');
+                setTimeout(() => {
+                    queueAudioMessage('askLoginOrRegister');
+                }, 1000);
+            }
+            return;
+        }
+        if (loginStep === 'chooseMethod') {
+            if (voiceKeywords.some(keyword => normalizedText.includes(keyword))) {
+                setLoginMethod('voice');
+                setShowVoiceLogin(true);
+                setShowFaceLogin(false);
+                setShowBrailleInput(false);
+                queueAudioMessage('voiceLogin');
+            } else if (faceKeywords.some(keyword => normalizedText.includes(keyword))) {
+                setLoginMethod('face');
+                setShowVoiceLogin(false);
+                setShowFaceLogin(true);
+                setShowBrailleInput(false);
+                queueAudioMessage('faceLogin');
+            } else if (brailleKeywords.some(keyword => normalizedText.includes(keyword))) {
+                setLoginMethod('braille');
+                setShowVoiceLogin(false);
+                setShowFaceLogin(false);
+                setShowBrailleInput(true);
+                queueAudioMessage('passwordPrompt');
+            } else {
+                queueAudioMessage('notUnderstood');
+            }
+            return;
+        }
+    };
 
     // Cleanup global variables when component unmounts
     useEffect(() => {
@@ -1311,8 +1481,35 @@ const handleBraillePasswordComplete = async (braillePassword) => {
                     )}
                 </div>
 
+                {isLoggingIn && !showVoiceLogin && !showFaceLogin && !showBrailleInput && (
+                    // SOLO mostrar el input de email SIN recuadro ni botón
+                    <div className="mt-8">
+                        {!email && (
+                            <div className="space-y-6">
+                                <div className="rounded-md shadow-sm -space-y-px">
+                                    <div>
+                                        <label htmlFor="login-email" className="sr-only">
+                                            Correo electrónico
+                                        </label>
+                                        <input
+                                            id="login-email"
+                                            name="email"
+                                            type="email"
+                                            required
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            className="appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                                            placeholder="Correo electrónico"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
                 {!showVoiceLogin && !showFaceLogin ? (
-                    showBrailleInput ? (
+                    isRegistering && showBrailleInput ? (
                         <div className="mt-8 braille-container">
                             <h3 className="text-lg font-medium text-center text-blue-800 mb-4">
                                 Creación de contraseña mediante Braille
@@ -1322,45 +1519,59 @@ const handleBraillePasswordComplete = async (braillePassword) => {
                             </p>
                             <BraillePassword onPasswordComplete={handleBraillePasswordComplete} />
                         </div>
+                    ) : !isRegistering && showBrailleInput ? (
+                        <div className="mt-8 braille-container">
+                            <h3 className="text-lg font-medium text-center text-blue-800 mb-4">
+                                Creación de contraseña mediante Braille
+                            </h3>
+                            <p className="text-sm text-center text-gray-600 mb-4">
+                                Indica verbalmente los puntos del patrón braille para crear tu contraseña
+                            </p>
+                            <BraillePasswordLogin onPasswordComplete={handleBrailleLogin} />
+                        </div>
                     ) : (
-                        <>
-                            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                                <div className="rounded-md shadow-sm -space-y-px">
-                                    {isRegistering && !isBrailleComplete && (
-                                        <div>
-                                            <label htmlFor="username" className="sr-only">
-                                                Nombre de usuario
-                                            </label>
-                                            <input
-                                                id="username"
-                                                name="username"
-                                                type="text"
-                                                required
-                                                value={username}
-                                                onChange={(e) => setUsername(e.target.value)}
-                                                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                                placeholder="Nombre de usuario"
-                                            />
-                                        </div>
-                                    )}
-                                    <div>
-                                        <label htmlFor="email" className="sr-only">
-                                            Correo electrónico
-                                        </label>
-                                        <input
-                                            id="email"
-                                            name="email"
-                                            type="email"
-                                            required
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${
-                                                isRegistering && !isBrailleComplete ? 'rounded-none' : 'rounded-t-md'
-                                            } focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-                                            placeholder="Correo electrónico"
-                                        />
-                                    </div>
-                                    {(!isRegistering || !isBrailleComplete) && (
+                        // Solo mostrar el formulario de registro/login si NO estamos en login inicial sin email
+                        // Evitar mostrar el segundo input de correo en la etapa inicial de login accesible
+                        isRegistering || (isLoggingIn && email) ? (
+                            <>
+                                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                                    <div className="rounded-md shadow-sm -space-y-px">
+                                        {isRegistering && !isBrailleComplete && (
+                                            <div>
+                                                <label htmlFor="username" className="sr-only">
+                                                    Nombre de usuario
+                                                </label>
+                                                <input
+                                                    id="username"
+                                                    name="username"
+                                                    type="text"
+                                                    required
+                                                    value={username}
+                                                    onChange={(e) => setUsername(e.target.value)}
+                                                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:z-10 sm:text-sm"
+                                                    placeholder="Nombre de usuario"
+                                                />
+                                            </div>
+                                        )}
+                                        {/* SOLO mostrar el input de correo en registro o si ya se confirmó en login */}
+                                        {(isRegistering || (isLoggingIn && email)) && (
+                                            <div>
+                                                <label htmlFor="email" className="sr-only">
+                                                    Correo electrónico
+                                                </label>
+                                                <input
+                                                    id="email"
+                                                    name="email"
+                                                    type="email"
+                                                    required
+                                                    value={email}
+                                                    onChange={(e) => setEmail(e.target.value)}
+                                                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                                                    placeholder="Correo electrónico"
+                                                    disabled={isLoggingIn} // evitar edición en login
+                                                />
+                                            </div>
+                                        )}
                                         <div>
                                             <label htmlFor="password" className="sr-only">
                                                 Contraseña
@@ -1372,145 +1583,55 @@ const handleBraillePasswordComplete = async (braillePassword) => {
                                                 required
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
-                                                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                                                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                                                 placeholder="Contraseña"
                                             />
                                         </div>
+                                    </div>
+
+                                    {transcript && (
+                                        <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                                            <p className="text-sm text-gray-700">Texto reconocido: {transcript}</p>
+                                        </div>
                                     )}
-                                </div>
 
-                                {transcript && (
-                                    <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                                        <p className="text-sm text-gray-700">Texto reconocido: {transcript}</p>
-                                    </div>
-                                )}
+                                    {error && (
+                                        <div className="text-red-500 text-sm text-center">
+                                            {error}
+                                        </div>
+                                    )}
 
-                                {error && (
-                                    <div className="text-red-500 text-sm text-center">
-                                        {error}
-                                    </div>
-                                )}
+                                    {success && (
+                                        <div className="text-green-500 text-sm text-center">
+                                            {success}
+                                        </div>
+                                    )}
 
-                                {success && (
-                                    <div className="text-green-500 text-sm text-center">
-                                        {success}
-                                    </div>
-                                )}
-
-                                {audioError && (
-                                    <div className="mt-4 p-4 bg-red-50 rounded-md">
-                                        <p className="text-sm text-red-700">
-                                            Error al reproducir audio. Por favor, verifica que los archivos de audio existan en la carpeta correcta.
-                                        </p>
-                                    </div>
-                                )}
-
-                                {isListening && (
-                                    <div className="mt-4 p-4 bg-green-50 rounded-md">
-                                        <p className="text-sm text-green-700">Escuchando... (se detendrá automáticamente después de 1 segundo de silencio)</p>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <button
-                                        type="submit"
-                                        className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                    >
-                                        {isRegistering ? 'Registrarse' : 'Iniciar sesión'}
-                                    </button>
-                                </div>
-                            </form>
-
-                            {isRegistering && !isBrailleComplete && !showBrailleInput && (
-                                <div className="mt-8">
-                                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                        <h3 className="text-lg font-semibold text-blue-800 mb-2">Modo de Registro</h3>
-                                        <p className="text-sm text-blue-700 mb-2">
-                                            Por favor, completa los campos del formulario para crear tu cuenta.
-                                        </p>
-                                        <p className="text-sm text-blue-700">
-                                            También puedes usar el asistente de voz para dictar tu información.
-                                        </p>
-                                    </div>
-                                    
-                                    {/* Botón explícito para activar reconocimiento de voz */}
-                                    {!email && (
-                                        <div className="mb-6">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (!isPlayingRef.current && !isListening) {
-                                                        handleStartListening();
-                                                    } else if (isListening) {
-                                                        handleStopListening();
-                                                    }
-                                                }}
-                                                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium ${
-                                                    isListening 
-                                                        ? 'text-white bg-red-600 hover:bg-red-700' 
-                                                        : 'text-white bg-green-600 hover:bg-green-700'
-                                                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                                                </svg>
-                                                {isListening ? 'Detener reconocimiento' : 'Hablar para registrarse'}
-                                            </button>
-                                            <p className="mt-2 text-xs text-center text-gray-500">
-                                                Presiona este botón cuando estés listo para hablar y proporcionar tus datos
+                                    {audioError && (
+                                        <div className="mt-4 p-4 bg-red-50 rounded-md">
+                                            <p className="text-sm text-red-700">
+                                                Error al reproducir audio. Por favor, verifica que los archivos de audio existan en la carpeta correcta.
                                             </p>
                                         </div>
                                     )}
-                                    
-                                    {email && (
-                                        <div className="mt-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowBrailleInput(true)}
-                                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-                                            >
-                                                Crear contraseña con Braille
-                                            </button>
-                                            <p className="mt-2 text-xs text-center text-gray-500">
-                                                Crea una contraseña segura mediante el sistema braille
-                                            </p>
+
+                                    {isListening && (
+                                        <div className="mt-4 p-4 bg-green-50 rounded-md">
+                                            <p className="text-sm text-green-700">Escuchando... (se detendrá automáticamente después de 1 segundo de silencio)</p>
                                         </div>
                                     )}
-                                </div>
-                            )}
 
-                            {!isRegistering && (
-                                <div className="mt-6">
-                                    <div className="relative">
-                                        <div className="absolute inset-0 flex items-center">
-                                            <div className="w-full border-t border-gray-300"></div>
-                                        </div>
-                                        <div className="relative flex justify-center text-sm">
-                                            <span className="px-2 bg-white text-gray-500">Otras opciones</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 grid grid-cols-2 gap-3">
+                                    <div>
                                         <button
-                                            onClick={() => {
-                                                updateAppState('voiceLogin');
-                                            }}
-                                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                                            type="submit"
+                                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                         >
-                                            Voz
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                updateAppState('faceLogin');
-                                            }}
-                                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                        >
-                                            Facial
+                                            {isRegistering ? 'Registrarse' : 'Iniciar sesión'}
                                         </button>
                                     </div>
-                                </div>
-                            )}
-                        </>
+                                </form>
+                            </>
+                        ) : null
                     )
                 ) : showFaceLogin ? (
                     <div className="mt-8">
@@ -1528,7 +1649,19 @@ const handleBraillePasswordComplete = async (braillePassword) => {
                     </div>
                 ) : (
                     <div className="mt-8">
-                        <VoiceLogin onLoginSuccess={handleVoiceLoginSuccess} />
+                        <h3 className="text-lg font-semibold mb-2 text-center">Reconocimiento de voz para inicio de sesión</h3>
+                        <VoiceLoginRecorder
+                            autoStart={true} // Forzar autoStart
+                            login={login}
+                            navigate={navigate}
+                            onRecordingComplete={blob => {
+                                setAudioBlob(blob);
+                                // Aquí puedes llamar a tu función de login con el blob
+                                // handleVoiceLogin(blob);
+                            }}
+                            onStartRecording={() => setIsRecording(true)}
+                            onStopRecording={() => setIsRecording(false)}
+                        />
                         <div className="mt-4 text-center">
                             <button
                                 onClick={() => {
@@ -1559,11 +1692,14 @@ const handleBraillePasswordComplete = async (braillePassword) => {
                             <p className="text-sm text-gray-600">Grabación de voz (opcional)</p>
                             <p className="text-xs text-gray-500">Te permitirá iniciar sesión usando tu voz en el futuro</p>
                         </div>
-                        <VoiceRecorder
-                            onRecordingComplete={handleVoiceRecordingComplete}
-                            onStartRecording={handleStartRecording}
-                            onStopRecording={handleStopRecording}
-                        />
+                        {showVoiceRecorder && (
+                            <VoiceRecorder
+                                onRecordingComplete={handleVoiceRecordingComplete}
+                                onStartRecording={handleStartRecording}
+                                onStopRecording={handleStopRecording}
+                                autoStart={true} // Activar grabación automáticamente
+                            />
+                        )}
                         
                         <div className="mt-6">
                             <div className="text-center mb-4">

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import './VoiceRecorder.css';
 import { config } from '../config';
 import { playPredefinedMessage, playBeep } from '../services/audioService';
-const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording, registrationStepProp }) => {
+
+const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording, registrationStepProp, autoStart }) => {
     // Estados existentes
     const [mediaRecorder, setMediaRecorder] = useState(null);
     const [isRecording, setIsRecording] = useState(false);
@@ -874,6 +875,15 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording,
         }
     };
 
+    // Agregar el efecto para autoStart
+    useEffect(() => {
+        if (typeof autoStart !== 'undefined' && autoStart && !isRecording) {
+            debugLog('🚦 autoStart activo, iniciando grabación automáticamente', 1);
+            handleStartRecording();
+        }
+        // eslint-disable-next-line
+    }, [autoStart]);
+
     return (
         <div className="voice-recorder-container bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Registro de Voz</h3>
@@ -974,67 +984,6 @@ const VoiceRecorder = ({ onRecordingComplete, onStartRecording, onStopRecording,
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
-
-            <div className="flex items-center justify-between">
-                <button
-                    ref={recordButtonRef}
-                    onClick={isRecording ? handleStopRecording : handleStartRecording}
-                    className={`record-button px-4 py-2 rounded-md font-medium ${
-                        isRecording
-                            ? 'bg-red-600 hover:bg-red-700 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
-                    type="button"
-                    aria-label={isRecording ? "Detener grabación" : "Iniciar grabación"}
-                    disabled={isStoppingRef.current} // Deshabilitar durante la detención
-                >
-                    {isRecording ? 'Detener Grabación' : 'Iniciar Grabación'}
-                </button>
-
-                {isRecording && (
-                    <div className="flex flex-col items-start">
-                        <div className="flex items-center">
-                            <div className="animate-pulse mr-2 h-3 w-3 rounded-full bg-red-600"></div>
-                            <span className="text-sm text-gray-600">
-                                {silenceDetected 
-                                    ? "Silencio detectado... finalizando" 
-                                    : "Grabando... (escucha el beep para comenzar a hablar)"}
-                            </span>
-                        </div>
-                        <div className="w-full mt-1 h-2 bg-gray-200 rounded-full">
-                            <div 
-                                className={`h-full rounded-full ${silenceDetected ? 'bg-yellow-500' : 'bg-green-500'}`} 
-                                style={{width: `${volume}%`, transition: 'width 0.1s ease'}}
-                            ></div>
-                        </div>
-                        {DEBUG_LEVEL > 0 && (
-                            <div className="mt-1 text-xs text-gray-500">
-                                Nivel: {volumeAverageRef.current} | 
-                                Frames: {consecutiveFramesCounterRef.current} | 
-                                Voz: {hasVoiceBeenDetectedRef.current ? 'Sí' : 'No'} |
-                                Silencio: {silenceDetected ? 'Sí' : 'No'}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Mostrar gráfico de niveles de audio */}
-            {isRecording && allLevels.length > 0 && (
-                <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">Historial de niveles de audio:</p>
-                    <div className="flex h-8 items-end space-x-1">
-                        {allLevels.map((level, index) => (
-                            <div 
-                                key={index} 
-                                className={`w-2 ${level > VOICE_THRESHOLD ? 'bg-blue-500' : level > SILENCE_THRESHOLD ? 'bg-green-500' : 'bg-gray-300'}`}
-                                style={{height: `${Math.max(5, Math.min(100, level * 3))}%`}}
-                                title={`Nivel: ${level}`}
-                            ></div>
-                        ))}
                     </div>
                 </div>
             )}

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,6 +7,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const [timeString, setTimeString] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -18,9 +19,11 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = () => {
-    logout();
+    logout();                      // cerrar sesión
+    console.log('👋 Sesión cerrada, redirigiendo a /');
+    navigate('/');                 // redirigir al home
   };
-
+  
   const navItems = [
     { path: '/home', label: 'INICIO' },
     { path: '/acerca', label: 'ACERCA' },
