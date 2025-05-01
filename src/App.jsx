@@ -3,12 +3,15 @@ import { Routes, Route, Navigate, HashRouter } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import AccessibleLogin from './pages/AccessibleLogin';
-import Home from './pages/Home';
 import Acerca from './pages/Acerca';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Contact from './pages/Contact';
 import ProtectedRoute from './components/ProtectedRoute';
+
+// Una vez que inicié sesión...
+import Home from './pages/LoggedIn/Home';
+import Logica from './pages/LoggedIn/Logica';
 
 const AppLayout = () => {
   const { user } = useAuth();
@@ -23,6 +26,7 @@ const AppLayout = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/acerca" element={<Acerca />} />
           <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path ="/logica" element={<Logica />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

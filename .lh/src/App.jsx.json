@@ -1,0 +1,26 @@
+{
+    "sourceFile": "src/App.jsx",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 2,
+            "patches": [
+                {
+                    "date": 1746060525098,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1746060539739,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -2,9 +2,9 @@\n import { Routes, Route, Navigate, HashRouter } from 'react-router-dom';\n import { AuthProvider, useAuth } from './context/AuthContext';\n import Login from './pages/Login';\n import AccessibleLogin from './pages/AccessibleLogin';\n-import Home from './pages/Home';\n+import Home from './pages/LoggedIn/Home';\n import Acerca from './pages/Acerca';\n import Navbar from './components/Navbar';\n import Footer from './components/Footer';\n import Contact from './pages/Contact';\n"
+                },
+                {
+                    "date": 1746060677409,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -2,15 +2,17 @@\n import { Routes, Route, Navigate, HashRouter } from 'react-router-dom';\n import { AuthProvider, useAuth } from './context/AuthContext';\n import Login from './pages/Login';\n import AccessibleLogin from './pages/AccessibleLogin';\n-import Home from './pages/LoggedIn/Home';\n import Acerca from './pages/Acerca';\n import Navbar from './components/Navbar';\n import Footer from './components/Footer';\n import Contact from './pages/Contact';\n import ProtectedRoute from './components/ProtectedRoute';\n \n+// Una vez que inicié sesión...\n+import Home from './pages/LoggedIn/Home';\n+import Logica from './pages/LoggedIn/Logica';\n const AppLayout = () => {\n   const { user } = useAuth();\n   \n   return (\n"
+                }
+            ],
+            "date": 1746060525098,
+            "name": "Commit-0",
+            "content": "import React from 'react';\nimport { Routes, Route, Navigate, HashRouter } from 'react-router-dom';\nimport { AuthProvider, useAuth } from './context/AuthContext';\nimport Login from './pages/Login';\nimport AccessibleLogin from './pages/AccessibleLogin';\nimport Home from './pages/Home';\nimport Acerca from './pages/Acerca';\nimport Navbar from './components/Navbar';\nimport Footer from './components/Footer';\nimport Contact from './pages/Contact';\nimport ProtectedRoute from './components/ProtectedRoute';\n\nconst AppLayout = () => {\n  const { user } = useAuth();\n  \n  return (\n    <div className=\"flex flex-col min-h-screen\">\n      {user && <Navbar />}\n      <main className=\"flex-grow\">\n        <Routes>\n          <Route path=\"/\" element={<AccessibleLogin />} />\n          <Route path=\"/login\" element={!user ? <Login /> : <Navigate to=\"/home\" />} />\n          <Route path=\"/contact\" element={<Contact />} />\n          <Route path=\"/acerca\" element={<Acerca />} />\n          <Route path=\"/home\" element={<ProtectedRoute><Home /></ProtectedRoute>} />\n          <Route path=\"*\" element={<Navigate to=\"/\" />} />\n        </Routes>\n      </main>\n      {user && <Footer />}\n    </div>\n  );\n};\n\nconst App = () => {\n  return (\n    <AuthProvider>\n      <HashRouter>\n        <AppLayout />\n      </HashRouter>\n    </AuthProvider>\n  );\n};\n\nexport default App;\n"
+        }
+    ]
+}

@@ -370,6 +370,7 @@ const BraillePasswordLogin = ({ onPasswordComplete }) => {
                             console.log("Comando de confirmación detectado después de dígitos");
                             console.log("Estado antes de confirmar:", currentCharacter, "Referencia:", currentCharRef.current);
                             confirmCharacter();
+                            playBeep();
                         }, 800); // Aumentar el retraso para dar más tiempo a que se actualice el estado
                     }
                     return;
@@ -393,6 +394,7 @@ const BraillePasswordLogin = ({ onPasswordComplete }) => {
         if (hasSiguienteCommand) {
             console.log("Comando de confirmación detectado");
             confirmCharacter();
+            playBeep();
             return;
         }
         
@@ -419,6 +421,7 @@ const BraillePasswordLogin = ({ onPasswordComplete }) => {
             if (hasSiguienteCommand) {
                 setTimeout(() => {
                     confirmCharacter();
+                    playBeep();
                 }, 800);
             }
             return;
@@ -1269,191 +1272,219 @@ const BraillePasswordLogin = ({ onPasswordComplete }) => {
     };
 
     return (
-        <div className="braille-password-container bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4 text-center">Contraseña Braille</h3>
+        <div className="braille-password-container bg-gray-800/80 backdrop-blur-xl rounded-xl border border-pink-500/20 p-6 shadow-2xl glow-card">
+          <h3 className="text-lg font-semibold text-center text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-yellow-400 to-green-500 mb-4">
+            Contraseña Braille
+          </h3>
+          
+          <div className="mb-4 text-center">
+            <p className="text-md text-gray-100">
+              {status === 'waiting' && 'Preparando reconocimiento de voz...'}
+              {status === 'listening' && 'Di los números de los puntos braille (1-6)'}
+              {status === 'processing' && 'Procesando...'}
+              {status === 'completed' && '¡Contraseña guardada!'}
+            </p>
             
-            <div className="mb-4 text-center">
-                <p className="text-md text-gray-700">
-                    {status === 'waiting' && 'Preparando reconocimiento de voz...'}
-                    {status === 'listening' && 'Di los números de los puntos braille (1-6)'}
-                    {status === 'processing' && 'Procesando...'}
-                    {status === 'completed' && '¡Contraseña guardada!'}
-                </p>
-                
-                {listening && (
-                    <div className="mt-2 inline-flex items-center">
-                        <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-2"></span>
-                        <span className="text-sm text-green-600">Escuchando comandos de voz</span>
-                    </div>
-                )}
-                
-                {message && (
-                    <p className="text-sm text-blue-600 mt-2">{message}</p>
-                )}
+            {listening && (
+              <div className="mt-2 inline-flex items-center">
+                <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-2 shadow-lg shadow-green-500/50"></span>
+                <span className="text-sm text-green-400 neon-text-green">Escuchando comandos de voz</span>
+              </div>
+            )}
+            
+            {message && (
+              <p className="text-sm text-cyan-400 mt-2">{message}</p>
+            )}
+          </div>
+      
+          <div className="braille-display mb-6">
+            <div className="relative">
+              <div className="mb-2 text-center">
+                <span className="text-xs text-gray-400">Configuración de puntos Braille</span>
+              </div>
+              <div className="braille-cell grid grid-cols-2 gap-4 justify-center mx-auto max-w-[180px] p-4 bg-gray-900/60 rounded-lg border border-cyan-500/30">
+                <div 
+                  className={`braille-dot w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-all duration-300 text-lg font-bold ${
+                    activeDots.includes(1) 
+                      ? 'bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/50' 
+                      : 'bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600'
+                  }`}
+                  data-position="1"
+                  aria-label="Punto braille 1"
+                  title="Punto 1"
+                >1</div>
+                <div 
+                  className={`braille-dot w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-all duration-300 text-lg font-bold ${
+                    activeDots.includes(2) 
+                      ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-gray-900 shadow-lg shadow-yellow-400/50' 
+                      : 'bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600'
+                  }`}
+                  data-position="2"
+                  aria-label="Punto braille 2"
+                  title="Punto 2"
+                >2</div>
+                <div 
+                  className={`braille-dot w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-all duration-300 text-lg font-bold ${
+                    activeDots.includes(3) 
+                      ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-gray-900 shadow-lg shadow-green-400/50' 
+                      : 'bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600'
+                  }`}
+                  data-position="3"
+                  aria-label="Punto braille 3"
+                  title="Punto 3"
+                >3</div>
+                <div 
+                  className={`braille-dot w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-all duration-300 text-lg font-bold ${
+                    activeDots.includes(4) 
+                      ? 'bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-lg shadow-cyan-400/50' 
+                      : 'bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600'
+                  }`}
+                  data-position="4"
+                  aria-label="Punto braille 4"
+                  title="Punto 4"
+                >4</div>
+                <div 
+                  className={`braille-dot w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-all duration-300 text-lg font-bold ${
+                    activeDots.includes(5) 
+                      ? 'bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white shadow-lg shadow-fuchsia-500/50' 
+                      : 'bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600'
+                  }`}
+                  data-position="5"
+                  aria-label="Punto braille 5"
+                  title="Punto 5"
+                >5</div>
+                <div 
+                  className={`braille-dot w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-all duration-300 text-lg font-bold ${
+                    activeDots.includes(6) 
+                      ? 'bg-gradient-to-br from-ffd700 to-amber-500 text-gray-900 shadow-lg shadow-amber-500/50' 
+                      : 'bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600'
+                  }`}
+                  data-position="6"
+                  aria-label="Punto braille 6"
+                  title="Punto 6"
+                >6</div>
+              </div>
             </div>
-
-            <div className="braille-display mb-6">
-                <div className="relative">
-                    <div className="mb-2 text-center">
-                        <span className="text-xs text-gray-500">Configuración de puntos Braille</span>
-                    </div>
-                    <div className="braille-cell">
-                        <div 
-                            className={`braille-dot ${getBrailleDotClass(1)}`} 
-                            data-position="1"
-                            aria-label="Punto braille 1"
-                            title="Punto 1"
-                        >1</div>
-                        <div 
-                            className={`braille-dot ${getBrailleDotClass(2)}`} 
-                            data-position="2"
-                            aria-label="Punto braille 2"
-                            title="Punto 2"
-                        >2</div>
-                        <div 
-                            className={`braille-dot ${getBrailleDotClass(3)}`} 
-                            data-position="3"
-                            aria-label="Punto braille 3"
-                            title="Punto 3"
-                        >3</div>
-                        <div 
-                            className={`braille-dot ${getBrailleDotClass(4)}`} 
-                            data-position="4"
-                            aria-label="Punto braille 4"
-                            title="Punto 4"
-                        >4</div>
-                        <div 
-                            className={`braille-dot ${getBrailleDotClass(5)}`} 
-                            data-position="5"
-                            aria-label="Punto braille 5"
-                            title="Punto 5"
-                        >5</div>
-                        <div 
-                            className={`braille-dot ${getBrailleDotClass(6)}`} 
-                            data-position="6"
-                            aria-label="Punto braille 6"
-                            title="Punto 6"
-                        >6</div>
-                    </div>
+            
+            <div className="current-braille-info mt-4 text-center bg-gray-900/40 p-3 rounded-lg border border-pink-500/20">
+              {currentCharacter ? (
+                <div>
+                  <span className="text-3xl font-bold block text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-yellow-400 to-green-500">
+                    {currentCharacter}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    Puntos seleccionados: {activeDots.join(', ')}
+                  </span>
                 </div>
-                
-                <div className="current-braille-info mt-4 text-center">
-                    {currentCharacter ? (
-                        <div>
-                            {/* Mostrar el carácter en la interfaz visual */}
-                            <span className="text-2xl font-bold block">{currentCharacter}</span>
-                            <span className="text-xs text-gray-500">
-                                Puntos seleccionados: {activeDots.join(', ')}
-                            </span>
-                        </div>
-                    ) : (
-                        <span className="text-sm text-gray-500">Indica números para activar puntos</span>
-                    )}
-                </div>
+              ) : (
+                <span className="text-sm text-gray-400">Indica números para activar puntos</span>
+              )}
             </div>
-
-            <div className="password-display mb-4 p-3 bg-gray-50 rounded border border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña creada:</label>
-                <div className="h-8 flex items-center justify-center">
-                    {displayPassword ? (
-                        <span className="text-lg tracking-widest font-mono text-primary-600 font-bold">
-                            {/* Mostrar los caracteres reales de la contraseña */}
-                            {displayPassword}
-                        </span>
-                    ) : (
-                        <span className="text-sm text-gray-500 italic">No hay caracteres aún</span>
-                    )}
-                </div>
-                {displayPassword.length > 0 && (
-                    <div className="mt-2 text-center">
-                        <span className="text-xs text-gray-500">
-                            Longitud: {displayPassword.length} {displayPassword.length === 1 ? 'carácter' : 'caracteres'}
-                        </span>
-                    </div>
-                )}
+          </div>
+      
+          <div className="password-display mb-4 p-4 bg-gray-900/60 rounded-lg border border-cyan-500/30">
+            <label className="block text-sm font-medium text-gray-300 mb-2">Contraseña creada:</label>
+            <div className="h-10 flex items-center justify-center">
+              {displayPassword ? (
+                <span className="text-lg tracking-widest font-mono golden-text font-bold">
+                  {displayPassword}
+                </span>
+              ) : (
+                <span className="text-sm text-gray-500 italic">No hay caracteres aún</span>
+              )}
             </div>
-
-            <div className="voice-commands mb-4 p-3 bg-blue-50 rounded border border-blue-200">
-                <h4 className="font-medium text-blue-800 mb-2 text-center">Comandos de voz disponibles:</h4>
-                <div className="grid grid-cols-2 gap-2">
-                    <div className="p-2 bg-white rounded shadow-sm">
-                        <span className="text-sm font-medium block text-blue-700">1-6</span>
-                        <span className="text-xs text-gray-600">Activar puntos braille</span>
-                    </div>
-                    <div className="p-2 bg-white rounded shadow-sm">
-                        <span className="text-sm font-medium block text-blue-700">Siguiente</span>
-                        <span className="text-xs text-gray-600">Confirmar puntos seleccionados</span>
-                    </div>
-                    <div className="p-2 bg-white rounded shadow-sm">
-                        <span className="text-sm font-medium block text-blue-700">Borrar</span>
-                        <span className="text-xs text-gray-600">Eliminar última posición</span>
-                    </div>
-                    <div className="p-2 bg-white rounded shadow-sm">
-                        <span className="text-sm font-medium block text-blue-700">He terminado</span>
-                        <span className="text-xs text-gray-600">Finalizar contraseña</span>
-                    </div>
-                </div>
+            {displayPassword.length > 0 && (
+              <div className="mt-2 text-center">
+                <span className="text-xs text-gray-400">
+                  Longitud: {displayPassword.length} {displayPassword.length === 1 ? 'carácter' : 'caracteres'}
+                </span>
+              </div>
+            )}
+          </div>
+      
+          <div className="voice-commands mb-4 p-4 bg-gray-900/60 rounded-lg border border-indigo-500/30">
+            <h4 className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-3 text-center">
+              Comandos de voz disponibles:
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-gray-800/80 rounded-lg border border-pink-500/20 shadow-lg">
+                <span className="text-sm font-medium block text-pink-400">1-6</span>
+                <span className="text-xs text-gray-400">Activar puntos braille</span>
+              </div>
+              <div className="p-3 bg-gray-800/80 rounded-lg border border-yellow-500/20 shadow-lg">
+                <span className="text-sm font-medium block text-yellow-400">Siguiente</span>
+                <span className="text-xs text-gray-400">Confirmar puntos seleccionados</span>
+              </div>
+              <div className="p-3 bg-gray-800/80 rounded-lg border border-green-500/20 shadow-lg">
+                <span className="text-sm font-medium block text-green-400">Borrar</span>
+                <span className="text-xs text-gray-400">Eliminar última posición</span>
+              </div>
+              <div className="p-3 bg-gray-800/80 rounded-lg border border-cyan-500/20 shadow-lg">
+                <span className="text-sm font-medium block text-cyan-400">He terminado</span>
+                <span className="text-xs text-gray-400">Finalizar contraseña</span>
+              </div>
             </div>
-
-            <div className="controls flex flex-wrap gap-2 justify-center">
-                <button 
-                    onClick={startListening} 
-                    disabled={listening || status === 'completed'} 
-                    className="px-4 py-2 bg-green-600 text-white rounded-md disabled:opacity-50 flex items-center"
-                    aria-label="Iniciar reconocimiento de voz"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                    </svg>
-                    Iniciar escucha
-                </button>
-                <button 
-                    onClick={stopListening} 
-                    disabled={!listening || status === 'completed'} 
-                    className="px-4 py-2 bg-red-600 text-white rounded-md disabled:opacity-50 flex items-center"
-                    aria-label="Detener reconocimiento de voz"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm8-8a8 8 0 11-16 0 8 8 0 0116 0zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
-                    </svg>
-                    Detener escucha
-                </button>
-                <button 
-                    onClick={confirmCharacter} 
-                    disabled={!currentCharacter || status === 'completed'} 
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50 flex items-center"
-                    aria-label="Confirmar carácter actual"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Confirmar
-                </button>
-                <button 
-                    onClick={deleteLastCharacter} 
-                    disabled={password.length === 0 || status === 'completed'} 
-                    className="px-4 py-2 bg-yellow-600 text-white rounded-md disabled:opacity-50 flex items-center"
-                    aria-label="Borrar último carácter"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M6.707 4.879A3 3 0 018.828 4H15a3 3 0 013 3v6a3 3 0 01-3 3H8.828a3 3 0 01-2.12-.879l-4.415-4.414a1 1 0 010-1.414l4.414-4.414zm4 2.414a1 1 0 00-1.414 1.414L10.586 10l-1.293 1.293a1 1 0 101.414 1.414L12 11.414l1.293 1.293a1 1 0 001.414-1.414L13.414 10l1.293-1.293a1 1 0 00-1.414-1.414L12 8.586l-1.293-1.293z" clipRule="evenodd" />
-                    </svg>
-                    Borrar
-                </button>
-                <button 
-                    onClick={completePassword} 
-                    disabled={password.length === 0 || status === 'completed'} 
-                    className="px-4 py-2 bg-purple-600 text-white rounded-md disabled:opacity-50 flex items-center"
-                    aria-label="Finalizar y guardar contraseña"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Finalizar
-                </button>
-            </div>
+          </div>
+      
+          <div className="controls flex flex-wrap gap-3 justify-center">
+            <button 
+              onClick={startListening} 
+              disabled={listening || status === 'completed'} 
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full disabled:opacity-50 flex items-center shadow-lg shadow-green-500/30 transition-all duration-300 hover:shadow-green-500/50 hover:-translate-y-1"
+              aria-label="Iniciar reconocimiento de voz"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+              </svg>
+              Iniciar escucha
+            </button>
+            <button 
+              onClick={stopListening} 
+              disabled={!listening || status === 'completed'} 
+              className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full disabled:opacity-50 flex items-center shadow-lg shadow-red-500/30 transition-all duration-300 hover:shadow-red-500/50 hover:-translate-y-1"
+              aria-label="Detener reconocimiento de voz"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm8-8a8 8 0 11-16 0 8 8 0 0116 0zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+              </svg>
+              Detener escucha
+            </button>
+            <button 
+              onClick={confirmCharacter} 
+              disabled={!currentCharacter || status === 'completed'} 
+              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full disabled:opacity-50 flex items-center shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-blue-500/50 hover:-translate-y-1"
+              aria-label="Confirmar carácter actual"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Confirmar
+            </button>
+            <button 
+              onClick={deleteLastCharacter} 
+              disabled={password.length === 0 || status === 'completed'} 
+              className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-full disabled:opacity-50 flex items-center shadow-lg shadow-yellow-500/30 transition-all duration-300 hover:shadow-yellow-500/50 hover:-translate-y-1"
+              aria-label="Borrar último carácter"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M6.707 4.879A3 3 0 018.828 4H15a3 3 0 013 3v6a3 3 0 01-3 3H8.828a3 3 0 01-2.12-.879l-4.415-4.414a1 1 0 010-1.414l4.414-4.414zm4 2.414a1 1 0 00-1.414 1.414L10.586 10l-1.293 1.293a1 1 0 101.414 1.414L12 11.414l1.293 1.293a1 1 0 001.414-1.414L13.414 10l1.293-1.293a1 1 0 00-1.414-1.414L12 8.586l-1.293-1.293z" clipRule="evenodd" />
+              </svg>
+              Borrar
+            </button>
+            <button 
+              onClick={completePassword} 
+              disabled={password.length === 0 || status === 'completed'} 
+              className="px-4 py-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white rounded-full disabled:opacity-50 flex items-center shadow-lg shadow-fuchsia-500/30 transition-all duration-300 hover:shadow-fuchsia-500/50 hover:-translate-y-1"
+              aria-label="Finalizar y guardar contraseña"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Finalizar
+            </button>
+          </div>
         </div>
-    );
+      );
 };
 
 export default BraillePasswordLogin;

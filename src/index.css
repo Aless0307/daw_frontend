@@ -1,3 +1,487 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes bgBlurFlow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.bg-gradient-radial {
+  background-image: radial-gradient(circle at 30% 30%, rgba(0,255,127,0.3), transparent 40%),
+                    radial-gradient(circle at 70% 70%, rgba(255,165,0,0.3), transparent 40%);
+  background-size: 200% 200%;
+  animation: bgBlurFlow 10s ease-in-out infinite;
+  filter: blur(80px);
+}
+
+
+@keyframes blob1 {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  50%  { transform: translate(40px, -30px) scale(1.1); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+@keyframes blob2 {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  50%  { transform: translate(-30px, 20px) scale(1.1); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+@keyframes blob3 {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  50%  { transform: translate(20px, -20px) scale(1.1); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.animate-blob1 { animation: blob1 15s infinite ease-in-out; }
+.animate-blob2 { animation: blob2 20s infinite ease-in-out; }
+.animate-blob3 { animation: blob3 18s infinite ease-in-out; }
+
+.animate-bgFlow {
+  background: linear-gradient(-45deg, #1f1c2c, #928DAB, #1f1c2c, #2BC0E4);
+  background-size: 400% 400%;
+  animation: gradientBG 20s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Estilos para la animación de neón y efectos */
+@layer components {
+  /* Anillo de neón animado principal */
+  .neon-ring {
+    @apply absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 650px;
+    height: 650px;
+    border-radius: 50%;
+    box-shadow: 0 0 50px rgba(255, 255, 255, 0.1);
+    animation: rotateRing 12s linear infinite;
+    overflow: hidden;
+  }
+  
+  .neon-ring::before,
+  .neon-ring::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    border-radius: 40%;
+  }
+  
+  .neon-ring::before {
+    border: 4px solid transparent;
+    border-top-color: #ff2d75;
+    border-right-color: #21e985;
+    animation: rotateInner 6s linear infinite;
+    box-shadow: 0 0 20px rgba(255, 45, 117, 0.5), 0 0 20px rgba(33, 233, 133, 0.5);
+  }
+  
+  .neon-ring::after {
+    border: 4px solid transparent;
+    border-bottom-color: #ffdd00;
+    border-left-color: #21e985;
+    animation: rotateOuter 10s linear infinite;
+    box-shadow: 0 0 20px rgba(255, 221, 0, 0.5), 0 0 20px rgba(33, 233, 133, 0.5);
+  }
+  
+  /* Nuevos anillos con animaciones en sentidos opuestos */
+  .neon-ring-outer {
+    @apply absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 750px;
+    height: 750px;
+    border-radius: 50%;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  .neon-ring-outer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #ffd700; /* Dorado */
+    border-left-color: #00e5ff; /* Cyan */
+    animation: rotateCounterRing 18s linear infinite;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.5), 0 0 25px rgba(0, 229, 255, 0.5);
+  }
+  
+  .neon-ring-inner {
+    @apply absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 550px;
+    height: 550px;
+    border-radius: 50%;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  
+  .neon-ring-inner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-right-color: #ffd700; /* Dorado */
+    border-bottom-color: #ff2d75; /* Rosa */
+    animation: rotateRing 15s linear infinite;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 45, 117, 0.5);
+  }
+  
+  /* Partículas doradas flotantes */
+  .golden-particles {
+    @apply absolute inset-0 overflow-hidden;
+    z-index: 1;
+  }
+  
+  .golden-particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #ffd700;
+    border-radius: 50%;
+    box-shadow: 0 0 10px 2px rgba(255, 215, 0, 0.8);
+    animation: floatParticle 6s infinite;
+    opacity: 0;
+  }
+  
+  .golden-particle:nth-child(1) {
+    top: 20%;
+    left: 30%;
+    animation-delay: 0s;
+  }
+  
+  .golden-particle:nth-child(2) {
+    top: 70%;
+    left: 60%;
+    animation-delay: 1s;
+  }
+  
+  .golden-particle:nth-child(3) {
+    top: 40%;
+    left: 80%;
+    animation-delay: 2s;
+  }
+  
+  .golden-particle:nth-child(4) {
+    top: 60%;
+    left: 20%;
+    animation-delay: 3s;
+  }
+  
+  .golden-particle:nth-child(5) {
+    top: 30%;
+    left: 50%;
+    animation-delay: 4s;
+  }
+  
+  .golden-particle:nth-child(6) {
+    top: 80%;
+    left: 40%;
+    animation-delay: 5s;
+  }
+  
+  /* Destellos dorados en esquinas */
+  .golden-corner {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    opacity: 0.1;
+    background: radial-gradient(circle, rgba(255,215,0,0.8) 0%, rgba(255,215,0,0) 70%);
+    animation: pulseGolden 4s ease-in-out infinite;
+  }
+  
+  .golden-corner:nth-child(1) {
+    top: 0;
+    left: 0;
+    animation-delay: 0s;
+  }
+  
+  .golden-corner:nth-child(2) {
+    top: 0;
+    right: 0;
+    animation-delay: 1s;
+  }
+  
+  .golden-corner:nth-child(3) {
+    bottom: 0;
+    left: 0;
+    animation-delay: 2s;
+  }
+  
+  .golden-corner:nth-child(4) {
+    bottom: 0;
+    right: 0;
+    animation-delay: 3s;
+  }
+  
+  /* Animaciones */
+  @keyframes rotateRing {
+    0% {
+      transform: translate(-50%, -50%) rotate(0deg);
+    }
+    100% {
+      transform: translate(-50%, -50%) rotate(360deg);
+    }
+  }
+  
+  @keyframes rotateCounterRing {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(-360deg);
+    }
+  }
+  
+  @keyframes rotateInner {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(-360deg);
+    }
+  }
+  
+  @keyframes rotateOuter {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  @keyframes floatParticle {
+    0% {
+      transform: translateY(0) translateX(0);
+      opacity: 0;
+    }
+    25% {
+      opacity: 0.8;
+    }
+    50% {
+      transform: translateY(-20px) translateX(10px);
+      opacity: 1;
+    }
+    75% {
+      opacity: 0.8;
+    }
+    100% {
+      transform: translateY(0) translateX(0);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes pulseGolden {
+    0% {
+      opacity: 0.1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.2;
+      transform: scale(1.1);
+    }
+    100% {
+      opacity: 0.1;
+      transform: scale(1);
+    }
+  }
+  
+  /* Borde dorado para la tarjeta principal */
+  .golden-border {
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+  }
+  
+  /* Efectos de brillo para tarjetas y elementos */
+  .glow-card {
+    box-shadow: 0 0 15px rgba(255, 45, 117, 0.2), 
+                0 0 30px rgba(33, 233, 133, 0.1),
+                0 0 40px rgba(255, 215, 0, 0.1); /* Añadido resplandor dorado */
+  }
+  
+  .glow-card-green {
+    box-shadow: 0 0 15px rgba(33, 233, 133, 0.2),
+                0 0 25px rgba(255, 215, 0, 0.1); /* Añadido resplandor dorado */
+  }
+  
+  .shadow-neon-glow {
+    box-shadow: 0 0 15px rgba(255, 45, 117, 0.4),
+                0 0 30px rgba(255, 221, 0, 0.2),
+                0 0 40px rgba(255, 215, 0, 0.2); /* Mejorado resplandor dorado */
+  }
+  
+  .shadow-neon-glow-green {
+    box-shadow: 0 0 15px rgba(33, 233, 133, 0.4),
+                0 0 30px rgba(34, 211, 238, 0.2),
+                0 0 40px rgba(255, 215, 0, 0.2); /* Añadido resplandor dorado */
+  }
+  
+  /* Estilo para los textos con resplandor dorado */
+  .golden-text {
+    background: linear-gradient(to right, #ffd700, #f5a623);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  }
+  
+  /* Estilo para los textos de instrucciones */
+  .neon-instructions {
+    background: rgba(20, 20, 30, 0.4);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(255, 45, 117, 0.2);
+    box-shadow: 0 0 10px rgba(255, 45, 117, 0.1),
+                0 0 20px rgba(255, 215, 0, 0.1); /* Añadido resplandor dorado */
+  }
+  
+  /* Efecto de brillo para inputs */
+  .input-wrapper {
+    position: relative;
+  }
+  
+  .input-glow:focus {
+    box-shadow: 0 10px 15px -3px rgba(255, 45, 117, 0.15),
+                0 0 20px rgba(255, 215, 0, 0.1); /* Añadido resplandor dorado */
+  }
+  
+  /* Textos con efecto neón */
+  .neon-text-green {
+    text-shadow: 0 0 5px rgba(33, 233, 133, 0.5);
+  }
+  
+  .neon-text-gold {
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+  }
+}
+
+
+/* Estilos para el componente Braille que complementan el tema de neón */
+@layer components {
+  /* Efectos de hover para puntos braille */
+  .braille-dot {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .braille-dot:hover:not([class*='bg-gradient']) {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+  
+  /* Animación cuando un punto se activa */
+  @keyframes dotActivate {
+    0% {
+      transform: scale(0.9);
+      opacity: 0.7;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  /* Aplicar animación cuando el punto está activo */
+  .braille-dot[class*='bg-gradient'] {
+    animation: dotActivate 0.4s ease-out forwards;
+  }
+  
+  /* Estilizar la celda braille para que tenga apariencia de panel tecnológico */
+  .braille-cell {
+    position: relative;
+  }
+  
+  .braille-cell::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(135deg, rgba(255,45,117,0.1), rgba(255,215,0,0.1), rgba(33,233,133,0.1));
+    border-radius: 1rem;
+    z-index: -1;
+    opacity: 0.6;
+    animation: gradientBorder 6s linear infinite;
+  }
+  
+  @keyframes gradientBorder {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  
+  /* Efecto de pulso para indicador de escucha */
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.05);
+    }
+  }
+  
+  /* Estilizar botones con efecto neón al hacer hover */
+  .controls button:hover:not(:disabled) {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Animación cuando la contraseña es completada */
+  @keyframes passwordComplete {
+    0% { 
+      opacity: 0.7;
+      transform: scale(0.95);
+    }
+    100% { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .password-display:has(span.golden-text) {
+    animation: passwordComplete 0.5s ease-out forwards;
+    border-color: rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  }
+}

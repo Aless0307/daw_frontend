@@ -401,48 +401,115 @@ const VoiceLoginRecorder = ({ onRecordingComplete, onStartRecording, onStopRecor
         }
     };
     return (
-        <div className="voice-recorder-container bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Login por Voz</h3>
-            {error && <div className="text-red-600 mb-2">{error}</div>}
-            {microphoneState && <div className="text-xs text-gray-500 mb-2">Micrófono: {microphoneState}</div>}
-            {detectorState && <div className="text-xs text-gray-500 mb-2">Detector: {detectorState}</div>}
-            {isRecording && (
-                <div className="flex items-center">
-                    <div className="animate-pulse mr-2 h-3 w-3 rounded-full bg-red-600"></div>
-                    <span className="text-sm text-gray-600">
-                        {silenceDetected 
-                            ? "Silencio detectado... finalizando" 
-                            : "Grabando... (habla claramente para iniciar)"}
-                    </span>
-                </div>
+        <div className="voice-recorder-container bg-gray-800/80 backdrop-blur-xl rounded-xl border border-purple-500/40 p-6 shadow-2xl glow-card">
+          <h3 className="text-lg font-semibold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-fuchsia-400 to-amber-400 mb-4">
+            Login por Voz
+          </h3>
+          
+          {error && (
+            <div className="mb-4 p-3 bg-gray-900/60 rounded-lg border border-red-500/30">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+          
+          <div className="info-container mb-4 p-3 bg-gray-900/40 rounded-lg border border-purple-600/30">
+            {microphoneState && (
+              <div className="flex items-center mb-2">
+                <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                <span className="text-xs text-amber-400">Micrófono: <span className="text-purple-300">{microphoneState}</span></span>
+              </div>
             )}
-            {isRecording && allLevels.length > 0 && (
-                <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">Historial de niveles de audio:</p>
-                    <div className="flex h-8 items-end space-x-1">
-                        {allLevels.map((level, index) => (
-                            <div 
-                                key={index} 
-                                className={`w-2 ${level > VOICE_THRESHOLD ? 'bg-blue-500' : level > SILENCE_THRESHOLD ? 'bg-green-500' : 'bg-gray-300'}`}
-                                style={{height: `${Math.max(5, Math.min(100, level * 3))}%`}}
-                                title={`Nivel: ${level}`}
-                            ></div>
-                        ))}
-                    </div>
-                </div>
+            
+            {detectorState && (
+              <div className="flex items-center">
+                <span className="w-2 h-2 bg-amber-500 rounded-full mr-2"></span>
+                <span className="text-xs text-amber-400">Detector: <span className="text-purple-300">{detectorState}</span></span>
+              </div>
             )}
-            {DEBUG_LEVEL > 0 && debugInfo && (
-                <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200 text-xs font-mono text-gray-500 max-h-36 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+          </div>
+          
+          {isRecording && (
+            <div className="recording-status mb-4 p-4 bg-gray-900/60 rounded-lg border border-purple-500/40 shadow-lg shadow-purple-500/20">
+              <div className="flex items-center">
+                <div className="animate-pulse mr-3 h-4 w-4 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-500 shadow-lg shadow-purple-500/50"></div>
+                <span className="text-md text-gray-100">
+                  {silenceDetected 
+                    ? "Silencio detectado... finalizando" 
+                    : "Grabando... (habla claramente para iniciar)"}
+                </span>
+              </div>
+              
+              {allLevels.length > 0 && (
+                <div className="mt-4 p-3 bg-gray-800/70 rounded-lg border border-amber-500/20 shadow-inner">
+                  <p className="text-xs text-amber-400 mb-2">Historial de niveles de audio:</p>
+                  <div className="flex h-10 items-end space-x-1 px-1">
+                    {allLevels.map((level, index) => (
+                      <div 
+                        key={index} 
+                        className={`w-2 rounded-t-sm transition-all duration-100 ${
+                          level > VOICE_THRESHOLD 
+                            ? 'bg-gradient-to-t from-amber-500 to-amber-300 shadow-sm shadow-amber-500/50' 
+                            : level > SILENCE_THRESHOLD 
+                              ? 'bg-gradient-to-t from-green-500 to-green-300 shadow-sm shadow-green-500/50' 
+                              : 'bg-gradient-to-t from-purple-700 to-purple-500'
+                        }`}
+                        style={{height: `${Math.max(5, Math.min(100, level * 3))}%`}}
+                        title={`Nivel: ${level}`}
+                      ></div>
+                    ))}
+                  </div>
                 </div>
-            )}
-            {audioSummary && (
-                <div className="mt-2 text-xs text-gray-500">
-                    Archivo generado: {audioSummary.size} bytes ({audioSummary.type})
-                </div>
-            )}
+              )}
+            </div>
+          )}
+          
+          {DEBUG_LEVEL > 0 && debugInfo && (
+            <div className="mt-4 p-3 bg-gray-900/40 rounded-lg border border-purple-500/20 text-xs font-mono text-purple-300 max-h-36 overflow-y-auto">
+              <div className="flex items-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <span className="text-amber-400">Información de depuración</span>
+              </div>
+              <pre className="whitespace-pre-wrap mt-2">{debugInfo}</pre>
+            </div>
+          )}
+          
+          {audioSummary && (
+            <div className="mt-4 p-3 bg-gray-900/40 rounded-lg border border-amber-500/30">
+              <div className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm golden-text">Archivo de audio generado:</span>
+              </div>
+              <div className="mt-2 ml-7 text-xs text-cyan-300">
+                <span className="text-amber-400">{audioSummary.size}</span> bytes (<span className="text-purple-300">{audioSummary.type}</span>)
+              </div>
+            </div>
+          )}
+          
+          <div className="controls mt-6 flex flex-wrap gap-3 justify-center">
+            <button 
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-full shadow-lg shadow-purple-500/30 transition-all duration-300 hover:shadow-purple-500/50 hover:-translate-y-1 flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+              </svg>
+              {isRecording ? 'Detener grabación' : 'Iniciar grabación'}
+            </button>
+            
+            <button 
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-gray-900 rounded-full shadow-lg shadow-amber-500/30 transition-all duration-300 hover:shadow-amber-500/50 hover:-translate-y-1 flex items-center" 
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+              </svg>
+              Continuar
+            </button>
+          </div>
         </div>
-    );
+      );
 };
 
 export default VoiceLoginRecorder;

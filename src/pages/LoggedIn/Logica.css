@@ -1,0 +1,25 @@
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1;
+  margin-left: 60px; /* Match collapsed sidebar width */
+  padding: 20px;
+  transition: margin-left 0.3s ease;
+  width: calc(100% - 60px);
+  box-sizing: border-box;
+}
+
+.sidebar.expanded ~ .content {
+  margin-left: 250px;
+  width: calc(100% - 250px);
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;
+    width: 100%;
+  }
+}

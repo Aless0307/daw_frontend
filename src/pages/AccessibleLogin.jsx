@@ -1239,13 +1239,12 @@ const AccessibleLogin = () => {
         
                 const data = await response.json();
                 console.log('✅ Login exitoso. Datos recibidos:', data);
-                const token = data.access_token;
-                sessionStorage.setItem('access_token', token);
+        
                 if (!data.access_token) {
                     console.error('❌ No se recibió access_token en la respuesta.');
                     throw new Error('No se recibió token en la respuesta');
                 }
-        
+                sessionStorage.setItem('access_token', data.access_token);
                 login({
                     token: data.access_token,
                     username: data.username || email,
@@ -1432,326 +1431,328 @@ const AccessibleLogin = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (wasRegistered) {
+          const timer = setTimeout(() => {
+            setWasRegistered(false); // o el nombre que uses para actualizarlo
+          }, 5000); // 5000 milisegundos = 5 segundos
+      
+          return () => clearTimeout(timer); // limpia el timeout si cambia antes
+        }
+      }, [wasRegistered]);
+      
+
     return (
-        
-        <div 
-            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-white py-12 px-4 sm:px-6 lg:px-8"
-            onClick={handleUserInteraction}
-            onTouchStart={handleUserInteraction}
-            tabIndex={0}
-            role="button"
-            aria-label="Activar asistente vocal"
+        <div
+          className="relative min-h-screen flex items-center justify-center bg-gray-900 text-gray-100 font-sans overflow-hidden"
+          onClick={handleUserInteraction}
+          onTouchStart={handleUserInteraction}
+          tabIndex={0}
+          role="button"
+          aria-label="Activar asistente vocal"
         >
-            <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
-                <div>
-                    <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                        {isRegistering 
-                            ? 'Crear cuenta accesible' 
-                            : isLoggingIn 
-                                ? 'Iniciar sesión accesible'
-                                : 'Acceso accesible por voz'}
-                    </h2>
-                    <p className="mt-2 text-center text-sm text-gray-600">
-                        Sistema de acceso para personas con discapacidad visual
-                    </p>
-                    
-                    {/* ✅ MENSAJE DE REGISTRO EXITOSO */}
-                    {wasRegistered && (
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 text-center">
-                        ✅ Registro exitoso. Ahora puedes iniciar sesión.
-                    </div>
-                    )}
-                    {!isInitialized && (
-                        <p className="mt-4 text-center text-sm text-indigo-600 animate-pulse">
-                            Toca cualquier parte de la pantalla para comenzar
-                        </p>
-                    )}
-                    {isInitialized && !isListening && (
-                        <div className="mt-4 text-center text-sm text-indigo-600 space-y-2">
-                            <p>
-                                Presiona la tecla <span className="font-bold">espacio</span> para activar el asistente
-                            </p>
-                            <p>
-                                Presiona <span className="font-bold">enter</span> para repetir el último mensaje
-                            </p>
-                            <p>
-                                Presiona <span className="font-bold">espacio</span> durante un audio para interrumpirlo
-                            </p>
-                        </div>
-                    )}
-                </div>
-
-                {isLoggingIn && !showVoiceLogin && !showFaceLogin && !showBrailleInput && (
-                    // SOLO mostrar el input de email SIN recuadro ni botón
-                    <div className="mt-8">
-                        {!email && (
-                            <div className="space-y-6">
-                                <div className="rounded-md shadow-sm -space-y-px">
-                                    <div>
-                                        <label htmlFor="login-email" className="sr-only">
-                                            Correo electrónico
-                                        </label>
-                                        <input
-                                            id="login-email"
-                                            name="email"
-                                            type="email"
-                                            required
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                            placeholder="Correo electrónico"
-                                            autoFocus
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-                {!showVoiceLogin && !showFaceLogin ? (
-                    isRegistering && showBrailleInput ? (
-                        <div className="mt-8 braille-container">
-                            <h3 className="text-lg font-medium text-center text-blue-800 mb-4">
-                                Creación de contraseña mediante Braille
-                            </h3>
-                            <p className="text-sm text-center text-gray-600 mb-4">
-                                Indica verbalmente los puntos del patrón braille para crear tu contraseña
-                            </p>
-                            <BraillePassword onPasswordComplete={handleBraillePasswordComplete} />
-                        </div>
-                    ) : !isRegistering && showBrailleInput ? (
-                        <div className="mt-8 braille-container">
-                            <h3 className="text-lg font-medium text-center text-blue-800 mb-4">
-                                Creación de contraseña mediante Braille
-                            </h3>
-                            <p className="text-sm text-center text-gray-600 mb-4">
-                                Indica verbalmente los puntos del patrón braille para crear tu contraseña
-                            </p>
-                            <BraillePasswordLogin onPasswordComplete={handleBrailleLogin} />
-                        </div>
-                    ) : (
-                        // Solo mostrar el formulario de registro/login si NO estamos en login inicial sin email
-                        // Evitar mostrar el segundo input de correo en la etapa inicial de login accesible
-                        isRegistering || (isLoggingIn && email) ? (
-                            <>
-                                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                                    <div className="rounded-md shadow-sm -space-y-px">
-                                        {isRegistering && !isBrailleComplete && (
-                                            <div>
-                                                <label htmlFor="username" className="sr-only">
-                                                    Nombre de usuario
-                                                </label>
-                                                <input
-                                                    id="username"
-                                                    name="username"
-                                                    type="text"
-                                                    required
-                                                    value={username}
-                                                    onChange={(e) => setUsername(e.target.value)}
-                                                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:z-10 sm:text-sm"
-                                                    placeholder="Nombre de usuario"
-                                                />
-                                            </div>
-                                        )}
-                                        {/* SOLO mostrar el input de correo en registro o si ya se confirmó en login */}
-                                        {(isRegistering || (isLoggingIn && email)) && (
-                                            <div>
-                                                <label htmlFor="email" className="sr-only">
-                                                    Correo electrónico
-                                                </label>
-                                                <input
-                                                    id="email"
-                                                    name="email"
-                                                    type="email"
-                                                    required
-                                                    value={email}
-                                                    onChange={(e) => setEmail(e.target.value)}
-                                                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                                    placeholder="Correo electrónico"
-                                                    disabled={isLoggingIn} // evitar edición en login
-                                                />
-                                            </div>
-                                        )}
-                                        <div>
-                                            <label htmlFor="password" className="sr-only">
-                                                Contraseña
-                                            </label>
-                                            <input
-                                                id="password"
-                                                name="password"
-                                                type="password"
-                                                required
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                                placeholder="Contraseña"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {transcript && (
-                                        <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                                            <p className="text-sm text-gray-700">Texto reconocido: {transcript}</p>
-                                        </div>
-                                    )}
-
-                                    {error && (
-                                        <div className="text-red-500 text-sm text-center">
-                                            {error}
-                                        </div>
-                                    )}
-
-                                    {success && (
-                                        <div className="text-green-500 text-sm text-center">
-                                            {success}
-                                        </div>
-                                    )}
-
-                                    {audioError && (
-                                        <div className="mt-4 p-4 bg-red-50 rounded-md">
-                                            <p className="text-sm text-red-700">
-                                                Error al reproducir audio. Por favor, verifica que los archivos de audio existan en la carpeta correcta.
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {isListening && (
-                                        <div className="mt-4 p-4 bg-green-50 rounded-md">
-                                            <p className="text-sm text-green-700">Escuchando... (se detendrá automáticamente después de 1 segundo de silencio)</p>
-                                        </div>
-                                    )}
-
-                                    <div>
-                                        <button
-                                            type="submit"
-                                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                        >
-                                            {isRegistering ? 'Registrarse' : 'Iniciar sesión'}
-                                        </button>
-                                    </div>
-                                </form>
-                            </>
-                        ) : null
-                    )
-                ) : showFaceLogin ? (
-                    <div className="mt-8">
-                        <FaceLogin onLoginSuccess={handleVoiceLoginSuccess} />
-                        <div className="mt-4 text-center">
-                            <button
-                                onClick={() => {
-                                    updateAppState('backToMain');
-                                }}
-                                className="text-sm text-indigo-600 hover:text-indigo-500"
-                            >
-                                Volver al login normal
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="mt-8">
-                        <h3 className="text-lg font-semibold mb-2 text-center">Reconocimiento de voz para inicio de sesión</h3>
-                        <VoiceLoginRecorder
-                            autoStart={true} // Forzar autoStart
-                            login={login}
-                            navigate={navigate}
-                            onRecordingComplete={blob => {
-                                setAudioBlob(blob);
-                                // Aquí puedes llamar a tu función de login con el blob
-                                // handleVoiceLogin(blob);
-                            }}
-                            onStartRecording={() => setIsRecording(true)}
-                            onStopRecording={() => setIsRecording(false)}
-                        />
-                        <div className="mt-4 text-center">
-                            <button
-                                onClick={() => {
-                                    updateAppState('backToMain');
-                                }}
-                                className="text-sm text-indigo-600 hover:text-indigo-500"
-                            >
-                                Volver al login normal
-                            </button>
-                        </div>
-  
-                    </div>
-                )}
-
-                {isRegistering && isBrailleComplete && (
-                    <div className="mt-8">
-                        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <h3 className="text-lg font-semibold text-blue-800 mb-2">Registro Biométrico (Opcional)</h3>
-                            <p className="text-sm text-blue-700 mb-2">
-                                Has registrado correctamente tu contraseña mediante braille.
-                            </p>
-                            <p className="text-sm text-blue-700">
-                                Ahora puedes registrar tu voz y tu rostro para facilitar tus inicios de sesión futuros.
-                            </p>
-                        </div>
-                        
-                        <div className="text-center mb-4">
-                            <p className="text-sm text-gray-600">Grabación de voz (opcional)</p>
-                            <p className="text-xs text-gray-500">Te permitirá iniciar sesión usando tu voz en el futuro</p>
-                        </div>
-                        {showVoiceRecorder && (
-                            <VoiceRecorder
-                                onRecordingComplete={handleVoiceRecordingComplete}
-                                onStartRecording={handleStartRecording}
-                                onStopRecording={handleStopRecording}
-                                autoStart={true} // Activar grabación automáticamente
-                            />
-                        )}
-                        
-                        <div className="mt-6">
-                            <div className="text-center mb-4">
-                                <p className="text-sm text-gray-600">Registro facial (opcional)</p>
-                                <p className="text-xs text-gray-500">Te permitirá iniciar sesión usando reconocimiento facial</p>
-                            </div>
-                            <FaceRecorder
-                                onPhotoComplete={handlePhotoComplete}
-                                onStartCapture={handleStartCapture}
-                                onStopCapture={handleStopCapture}
-                            />
-                        </div>
-                        
-                        <div className="mt-6">
-                            <button
-                                type="button"
-                                onClick={handleSubmit}
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                            >
-                                Completar Registro
-                            </button>
-                        </div>
-                    </div>
-                )}
+          {/* Círculos animados de neón con adiciones */}
+          <div className="absolute inset-0 overflow-hidden">
+            {/* Anillo principal original */}
+            <div className="neon-ring"></div>
+            
+            {/* Nuevo anillo exterior girando en sentido contrario */}
+            <div className="neon-ring-outer"></div>
+            
+            {/* Nuevo anillo interior */}
+            <div className="neon-ring-inner"></div>
+            
+            {/* Partículas doradas flotantes */}
+            <div className="golden-particles">
+              <div className="golden-particle"></div>
+              <div className="golden-particle"></div>
+              <div className="golden-particle"></div>
+              <div className="golden-particle"></div>
+              <div className="golden-particle"></div>
+              <div className="golden-particle"></div>
             </div>
-            {process.env.NODE_ENV !== 'production' && (
-                <div className="fixed bottom-0 right-0 m-4 p-4 bg-black text-white text-xs rounded shadow-lg opacity-70">
-                    <h4 className="font-bold mb-2">Estado actual:</h4>
-                    <ul>
-                        <li>isRegistering: {isRegistering ? '✅' : '❌'}</li>
-                        <li>showVoiceLogin: {showVoiceLogin ? '✅' : '❌'}</li>
-                        <li>showFaceLogin: {showFaceLogin ? '✅' : '❌'}</li>
-                        <li>isLoggingIn: {isLoggingIn ? '✅' : '❌'}</li>
-                        <li>isListening: {isListening ? '✅' : '❌'}</li>
-                        <li>isInitialized: {isInitialized ? '✅' : '❌'}</li>
-                    </ul>
-                    <button 
-                        onClick={() => updateAppState('register')} 
-                        className="mt-2 mr-2 px-2 py-1 bg-purple-700 text-white rounded text-xs"
-                    >
-                        Forzar Registro
-                    </button>
-                    <button 
-                        onClick={() => updateAppState('login')} 
-                        className="mt-2 px-2 py-1 bg-blue-700 text-white rounded text-xs"
-                    >
-                        Forzar Login
-                    </button>
-                </div>
+            
+            {/* Destellos dorados en las esquinas */}
+            <div className="golden-corner"></div>
+            <div className="golden-corner"></div>
+            <div className="golden-corner"></div>
+            <div className="golden-corner"></div>
+          </div>
+      
+          <div className="relative z-10 max-w-md w-full p-8 bg-gray-800/80 backdrop-blur-xl rounded-xl border border-pink-500/20 golden-border shadow-2xl glow-card">
+            {wasRegistered && (
+              <div className="bg-green-900/30 border border-green-500/30 text-green-400 px-4 py-3 rounded mb-4 text-center neon-text-green">
+                ✅ Registro exitoso. Ahora puedes iniciar sesión.
+              </div>
             )}
+      
+            <h2 className="text-center text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-yellow-400 to-green-500 mb-6">
+              {isRegistering
+                ? 'Crear cuenta accesible'
+                : isLoggingIn
+                ? 'Iniciar sesión accesible'
+                : 'Acceso accesible por voz'}
+            </h2>
+      
+            <p className="text-center text-sm golden-text mb-6">
+              Sistema de acceso para personas con discapacidad visual
+            </p>
+      
+            {!isInitialized && (
+              <p className="mt-4 text-center text-lg text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-yellow-400 animate-pulse">
+                Toca cualquier parte de la pantalla para comenzar
+              </p>
+            )}
+      
+            {isInitialized && !isListening && (
+              <div className="mt-4 text-center space-y-2 neon-instructions">
+                <p className="text-sm">
+                  Presiona la tecla <span className="font-semibold text-pink-400">espacio</span> para activar el asistente
+                </p>
+                <p className="text-sm">
+                  Presiona <span className="font-semibold text-yellow-400">enter</span> para repetir el último mensaje
+                </p>
+                <p className="text-sm">
+                  Presiona <span className="font-semibold text-green-400">espacio</span> durante un audio para interrumpirlo
+                </p>
+              </div>
+            )}
+      
+            {isLoggingIn && !showVoiceLogin && !showFaceLogin && !showBrailleInput && !email && (
+              <div className="input-wrapper mt-6">
+                <input
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-transparent border-b-2 border-pink-500/50 focus:border-pink-500 text-gray-100 placeholder-gray-500 focus:outline-none sm:text-sm input-glow"
+                  placeholder="Correo electrónico"
+                  autoFocus
+                />
+              </div>
+            )}
+      
+            {!showVoiceLogin && !showFaceLogin ? (
+              isRegistering && showBrailleInput ? (
+                <div className="mt-8 braille-container">
+                  <h3 className="text-lg font-medium text-center text-blue-800 mb-4">
+                    Creación de contraseña mediante Braille
+                  </h3>
+                  <p className="text-sm text-center text-gray-600 mb-4">
+                    Indica verbalmente los puntos del patrón braille para crear tu contraseña
+                  </p>
+                  <BraillePassword onPasswordComplete={handleBraillePasswordComplete} />
+                </div>
+              ) : !isRegistering && showBrailleInput ? (
+                <div className="mt-8 braille-container">
+                  <h3 className="text-lg font-medium text-center text-blue-800 mb-4">
+                    Creación de contraseña mediante Braille
+                  </h3>
+                  <p className="text-sm text-center text-gray-600 mb-4">
+                    Indica verbalmente los puntos del patrón braille para crear tu contraseña
+                  </p>
+                  <BraillePasswordLogin email={email} onPasswordComplete={handleBrailleLogin} onCancel={handleCancelBrailleLogin} />
+                </div>
+              ) : (
+                isRegistering || (isLoggingIn && email) ? (
+                  <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    {/* ...inputs y mensajes de error/success como ya tienes... */}
+                    <div className="input-wrapper">
+                      {isRegistering && !isBrailleComplete && (
+                        <input
+                          id="username"
+                          name="username"
+                          type="text"
+                          required
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          className="w-full px-4 py-3 bg-transparent border-b-2 border-yellow-500/50 focus:border-yellow-500 text-gray-100 placeholder-gray-500 focus:outline-none sm:text-sm input-glow"
+                          placeholder="Nombre de usuario"
+                        />
+                      )}
+                      {(isRegistering || (isLoggingIn && email)) && (
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          disabled={isLoggingIn}
+                          className="w-full px-4 py-3 bg-transparent border-b-2 border-pink-500/50 focus:border-pink-500 text-gray-100 placeholder-gray-500 focus:outline-none sm:text-sm input-glow"
+                          placeholder="Correo electrónico"
+                        />
+                      )}
+                      <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full px-4 py-3 bg-transparent border-b-2 border-green-500/50 focus:border-green-500 text-gray-100 placeholder-gray-500 focus:outline-none sm:text-sm input-glow"
+                        placeholder="Contraseña"
+                      />
+                    </div>
+                    {/* Mensajes de transcript, error, success, audioError, isListening... */}
+                    {transcript && (
+                      <div className="mt-4 p-4 bg-gray-800/70 rounded-md border border-pink-500/30">
+                        <p className="text-sm text-gray-300">Texto reconocido: {transcript}</p>
+                      </div>
+                    )}
+                    {error && <div className="text-pink-500 text-sm text-center">{error}</div>}
+                    {success && <div className="text-green-500 text-sm text-center">{success}</div>}
+                    {audioError && (
+                      <div className="mt-4 p-4 bg-red-900/30 rounded-md border border-red-500/30">
+                        <p className="text-sm text-red-400">
+                          Error al reproducir audio. Verifica que los archivos existan.
+                        </p>
+                      </div>
+                    )}
+                    {isListening && (
+                      <div className="mt-4 p-4 bg-green-900/30 rounded-md border border-green-500/30">
+                        <p className="text-sm text-green-400">Escuchando... (1s de silencio)</p>
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      className="w-full py-3 px-4 border border-transparent rounded-full text-sm font-medium text-gray-900 bg-gradient-to-r from-pink-500 via-yellow-400 to-green-500 hover:from-pink-600 hover:via-yellow-500 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-pink-500 transition-all duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg shadow-neon-glow"
+                    >
+                      {isRegistering ? 'Registrarse' : 'Iniciar sesión'}
+                    </button>
+                    <div className="flex justify-between text-sm pt-2">
+                      <button type="button" className="text-pink-400 hover:text-pink-300 transition-colors">
+                        Olvidé mi contraseña
+                      </button>
+                      <button type="button" className="text-green-400 hover:text-green-300 transition-colors">
+                        Registrarse
+                      </button>
+                    </div>
+                  </form>
+                ) : null
+              )
+            ) : showFaceLogin ? (
+              <div className="mt-8 bg-gray-800/70 p-6 rounded-lg border border-cyan-500/30">
+                <FaceLogin onLoginSuccess={handleVoiceLoginSuccess} />
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => updateAppState('backToMain')}
+                    className="text-sm text-cyan-500 hover:text-cyan-400 transition-colors"
+                  >
+                    Volver al login normal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-8 bg-gray-800/70 p-6 rounded-lg border border-pink-500/30">
+                <h3 className="text-lg font-semibold mb-4 text-center text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-500">
+                  Reconocimiento de voz
+                </h3>
+                <VoiceLoginRecorder
+                  autoStart={true}
+                  login={login}
+                  navigate={navigate}
+                  onRecordingComplete={setAudioBlob}
+                  onStartRecording={() => setIsRecording(true)}
+                  onStopRecording={() => setIsRecording(false)}
+                />
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => updateAppState('backToMain')}
+                    className="text-sm text-pink-500 hover:text-pink-400 transition-colors"
+                  >
+                    Volver al login normal
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Registro biométrico opcional */}
+            {isRegistering && isBrailleComplete && (
+              <div className="mt-8">
+                <div className="mb-6 p-6 bg-gray-800/70 rounded-lg border border-green-500/30 glow-card-green">
+                  <h3 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400 mb-3">
+                    Registro Biométrico (Opcional)
+                  </h3>
+                  <p className="text-sm text-green-400 mb-2">
+                    Has registrado correctamente tu contraseña mediante braille.
+                  </p>
+                  <p className="text-sm text-cyan-400">
+                    Ahora puedes registrar tu voz y tu rostro para facilitar tus inicios de sesión futuros.
+                  </p>
+                </div>
+      
+                <div className="bg-gray-800/70 p-6 rounded-lg border border-pink-500/30 mb-6">
+                  <div className="text-center mb-4">
+                    <p className="text-sm text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400 font-medium">
+                      Grabación de voz (opcional)
+                    </p>
+                    <p className="text-xs text-gray-500">Te permitirá iniciar sesión usando tu voz en el futuro</p>
+                  </div>
+      
+                  {showVoiceRecorder && (
+                    <VoiceRecorder
+                      onRecordingComplete={handleVoiceRecordingComplete}
+                      onStartRecording={handleStartRecording}
+                      onStopRecording={handleStopRecording}
+                      autoStart={true}
+                    />
+                  )}
+                </div>
+      
+                <div className="bg-gray-800/70 p-6 rounded-lg border border-cyan-500/30 mb-6">
+                  <div className="text-center mb-4">
+                    <p className="text-sm text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 font-medium">
+                      Registro facial (opcional)
+                    </p>
+                    <p className="text-xs text-gray-500">Te permitirá iniciar sesión usando reconocimiento facial</p>
+                  </div>
+                  <FaceRecorder
+                    onPhotoComplete={handlePhotoComplete}
+                    onStartCapture={handleStartCapture}
+                    onStopCapture={handleStopCapture}
+                  />
+                </div>
+      
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="w-full py-3 px-4 border border-transparent rounded-full text-sm font-medium text-gray-900 bg-gradient-to-r from-green-400 to-cyan-400 hover:from-green-500 hover:to-cyan-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-green-500 transition-all duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg shadow-neon-glow-green"
+                  >
+                    Completar Registro
+                  </button>
+                </div>
+              </div>
+            )}
+      
+            {/* Debug de estado */}
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="mt-6 p-4 bg-gray-950 text-gray-300 text-xs rounded shadow-lg opacity-80">
+                <h4 className="font-bold mb-2 text-pink-400">Estado actual:</h4>
+                <ul className="space-y-1">
+                  <li>isRegistering: {isRegistering ? '✅' : '❌'}</li>
+                  <li>showVoiceLogin: {showVoiceLogin ? '✅' : '❌'}</li>
+                  <li>showFaceLogin: {showFaceLogin ? '✅' : '❌'}</li>
+                  <li>isLoggingIn: {isLoggingIn ? '✅' : '❌'}</li>
+                  <li>isListening: {isListening ? '✅' : '❌'}</li>
+                  <li>isInitialized: {isInitialized ? '✅' : '❌'}</li>
+                </ul>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => updateAppState('register')} className="bg-pink-600 px-2 py-1 rounded text-xs">
+                    Forzar Registro
+                  </button>
+                  <button onClick={() => updateAppState('login')} className="bg-cyan-600 px-2 py-1 rounded text-xs">
+                    Forzar Login
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-    );
-};
+      );
+    }
 
 export default AccessibleLogin;

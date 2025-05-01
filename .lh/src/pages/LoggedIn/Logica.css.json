@@ -1,0 +1,26 @@
+{
+    "sourceFile": "src/pages/LoggedIn/Logica.css",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 2,
+            "patches": [
+                {
+                    "date": 1746113372356,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1746113442153,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,9 +1,17 @@\n .app-container {\n   display: flex;\n+  min-height: 100vh;\n }\n \n .content {\n   flex: 1;\n   margin-left: 250px; /* Must match sidebar width */\n   padding: 20px;\n+  transition: margin-left 0.3s ease;\n }\n+\n+@media (max-width: 768px) {\n+  .content {\n+    margin-left: 0;\n+  }\n+}\n"
+                },
+                {
+                    "date": 1746113599282,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,14 +4,22 @@\n }\n \n .content {\n   flex: 1;\n-  margin-left: 250px; /* Must match sidebar width */\n+  margin-left: 60px; /* Match collapsed sidebar width */\n   padding: 20px;\n   transition: margin-left 0.3s ease;\n+  width: calc(100% - 60px);\n+  box-sizing: border-box;\n }\n \n+.sidebar.expanded ~ .content {\n+  margin-left: 250px;\n+  width: calc(100% - 250px);\n+}\n+\n @media (max-width: 768px) {\n   .content {\n     margin-left: 0;\n+    width: 100%;\n   }\n }\n"
+                }
+            ],
+            "date": 1746113372356,
+            "name": "Commit-0",
+            "content": ".app-container {\n  display: flex;\n}\n\n.content {\n  flex: 1;\n  margin-left: 250px; /* Must match sidebar width */\n  padding: 20px;\n}\n"
+        }
+    ]
+}

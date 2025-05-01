@@ -314,64 +314,96 @@ const FaceRecorder = ({ onPhotoComplete, onStartCapture, onStopCapture }) => {
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Registro Facial</h3>
-            
-            <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Por favor, coloca tu rostro frente a la cámara:</p>
-                <p className="text-xs text-gray-500">La foto se tomará automáticamente cuando estés listo</p>
+        <div className="bg-gray-800/80 backdrop-blur-xl rounded-xl border border-pink-500/20 p-6 shadow-2xl glow-card">
+          <h3 className="text-lg font-semibold text-center text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-yellow-400 to-green-500 mb-4">
+            Registro Facial
+          </h3>
+          
+          <div className="mb-4 text-center">
+            <p className="text-md text-gray-100">Por favor, coloca tu rostro frente a la cámara:</p>
+            <p className="text-sm text-cyan-400 mt-2">La foto se tomará automáticamente cuando estés listo</p>
+          </div>
+    
+          {error && (
+            <div className="mb-4 p-4 bg-gray-900/60 rounded-lg border border-red-500/30">
+              <p className="text-sm text-red-400">{error}</p>
             </div>
-
-            {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600">{error}</p>
+          )}
+    
+          {photoSuccess && !isCapturing && (
+            <div className="mb-4 p-4 bg-gray-900/60 rounded-lg border border-green-500/30">
+              <p className="text-sm text-green-400">¡Foto capturada con éxito! Ya puedes enviar el formulario.</p>
+            </div>
+          )}
+    
+          <div className="mb-6">
+            {isCapturing && (
+              <div className="relative">
+                <div className="p-1 bg-gray-900/60 rounded-lg border border-cyan-500/30">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full rounded-lg"
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    className="hidden"
+                  />
                 </div>
+                <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white p-2 rounded-lg border border-yellow-500/20 shadow-lg">
+                  <div className="flex items-center">
+                    <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-2 shadow-lg shadow-green-500/50"></span>
+                    <p className="text-xs text-yellow-400 neon-text-gold">Estabilidad: {Math.round((1 - stability/5) * 100)}%</p>
+                  </div>
+                  <div className="flex items-center mt-1">
+                    <span className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse mr-2 shadow-lg shadow-cyan-400/50"></span>
+                    <p className="text-xs text-yellow-400 neon-text-gold">Luminosidad: {Math.round(lightLevel)}%</p>
+                  </div>
+                </div>
+              </div>
             )}
-
-            {photoSuccess && !isCapturing && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-sm text-green-600">¡Foto capturada con éxito! Ya puedes enviar el formulario.</p>
-                </div>
-             )}
-
-            <div className="mb-4">
-                {isCapturing && (
-                    <div className="relative">
-                        <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            className="w-full rounded-lg"
-                        />
-                        <canvas
-                            ref={canvasRef}
-                            className="hidden"
-                        />
-                        <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white p-2 rounded">
-                            <p className="text-xs">Estabilidad: {Math.round((1 - stability/5) * 100)}%</p>
-                            <p className="text-xs">Luminosidad: {Math.round(lightLevel)}%</p>
-                        </div>
-                    </div>
-                )}
+          </div>
+    
+          <div className="flex items-center justify-center">
+            <button
+              id="iniciarCamaraBtn"
+              onClick={isCapturing ? handleStopCapture : handleStartCapture}
+              className={`px-4 py-2 rounded-full font-medium flex items-center shadow-lg transition-all duration-300 hover:-translate-y-1 ${
+                isCapturing
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-red-500/30 hover:shadow-red-500/50'
+                  : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/30 hover:shadow-blue-500/50'
+              }`}
+              type="button"
+              data-testid="camera-button"
+            >
+              {isCapturing ? (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm8-8a8 8 0 11-16 0 8 8 0 0116 0zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+                  </svg>
+                  Detener Cámara
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                  </svg>
+                  Iniciar Cámara
+                </>
+              )}
+            </button>
+          </div>
+          
+          {photoSuccess && !isCapturing && (
+            <div className="mt-4 text-center">
+              <span className="text-lg tracking-widest font-mono golden-text font-bold">
+                ¡Registro completado!
+              </span>
             </div>
-
-            <div className="flex items-center justify-between">
-                <button
-                    id="iniciarCamaraBtn"
-                    onClick={isCapturing ? handleStopCapture : handleStartCapture}
-                    className={`px-4 py-2 rounded-md font-medium ${
-                        isCapturing
-                            ? 'bg-red-600 hover:bg-red-700 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
-                    type="button"
-                    data-testid="camera-button"
-                >
-                    {isCapturing ? 'Detener Cámara' : 'Iniciar Cámara'}
-                </button>
-            </div>
+          )}
         </div>
-    );
+      );
 };
 
 export default FaceRecorder;

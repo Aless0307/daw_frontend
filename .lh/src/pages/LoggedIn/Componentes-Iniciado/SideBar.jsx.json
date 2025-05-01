@@ -1,0 +1,26 @@
+{
+    "sourceFile": "src/pages/LoggedIn/Componentes-Iniciado/SideBar.jsx",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 2,
+            "patches": [
+                {
+                    "date": 1746113357751,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1746113599279,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,9 +1,11 @@\n-import React from 'react';\n+import React, { useState } from 'react';\n import { NavLink } from 'react-router-dom';\n-import './SideBar.css'; // We'll need to create this CSS file\n+import './SideBar.css';\n \n const SideBar = () => {\n+  const [expanded, setExpanded] = useState(false);\n+  \n   // Navigation items - you can modify these and their routes later\n   const navItems = [\n     { name: 'Dashboard', path: '/dashboard', icon: '📊' },\n     { name: 'Profile', path: '/profile', icon: '👤' },\n@@ -13,19 +15,24 @@\n     { name: 'Help', path: '/help', icon: '❓' },\n   ];\n \n   return (\n-    <nav className=\"sidebar\">\n+    <nav \n+      className={`sidebar ${expanded ? 'expanded' : 'collapsed'}`}\n+      onMouseEnter={() => setExpanded(true)}\n+      onMouseLeave={() => setExpanded(false)}\n+    >\n       <div className=\"sidebar-header\">\n-        <h3>App Name</h3>\n+        {expanded ? <h3>App Name</h3> : <h3>AN</h3>}\n       </div>\n       <div className=\"sidebar-menu\">\n         <ul>\n           {navItems.map((item, index) => (\n             <li key={index}>\n               <NavLink \n                 to={item.path}\n                 className={({ isActive }) => isActive ? \"active\" : \"\"}\n+                title={item.name}\n               >\n                 <span className=\"icon\">{item.icon}</span>\n                 <span className=\"text\">{item.name}</span>\n               </NavLink>\n@@ -33,9 +40,9 @@\n           ))}\n         </ul>\n       </div>\n       <div className=\"sidebar-footer\">\n-        <NavLink to=\"/logout\" className=\"logout-btn\">\n+        <NavLink to=\"/logout\" className=\"logout-btn\" title=\"Logout\">\n           <span className=\"icon\">🚪</span>\n           <span className=\"text\">Logout</span>\n         </NavLink>\n       </div>\n"
+                },
+                {
+                    "date": 1746113624565,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -21,9 +21,9 @@\n       onMouseEnter={() => setExpanded(true)}\n       onMouseLeave={() => setExpanded(false)}\n     >\n       <div className=\"sidebar-header\">\n-        {expanded ? <h3>App Name</h3> : <h3>AN</h3>}\n+        {expanded ? <h3>Applessandro</h3> : <h3>AN</h3>}\n       </div>\n       <div className=\"sidebar-menu\">\n         <ul>\n           {navItems.map((item, index) => (\n"
+                }
+            ],
+            "date": 1746113357751,
+            "name": "Commit-0",
+            "content": "import React from 'react';\nimport { NavLink } from 'react-router-dom';\nimport './SideBar.css'; // We'll need to create this CSS file\n\nconst SideBar = () => {\n  // Navigation items - you can modify these and their routes later\n  const navItems = [\n    { name: 'Dashboard', path: '/dashboard', icon: '📊' },\n    { name: 'Profile', path: '/profile', icon: '👤' },\n    { name: 'Projects', path: '/projects', icon: '📁' },\n    { name: 'Calendar', path: '/calendar', icon: '📅' },\n    { name: 'Settings', path: '/settings', icon: '⚙️' },\n    { name: 'Help', path: '/help', icon: '❓' },\n  ];\n\n  return (\n    <nav className=\"sidebar\">\n      <div className=\"sidebar-header\">\n        <h3>App Name</h3>\n      </div>\n      <div className=\"sidebar-menu\">\n        <ul>\n          {navItems.map((item, index) => (\n            <li key={index}>\n              <NavLink \n                to={item.path}\n                className={({ isActive }) => isActive ? \"active\" : \"\"}\n              >\n                <span className=\"icon\">{item.icon}</span>\n                <span className=\"text\">{item.name}</span>\n              </NavLink>\n            </li>\n          ))}\n        </ul>\n      </div>\n      <div className=\"sidebar-footer\">\n        <NavLink to=\"/logout\" className=\"logout-btn\">\n          <span className=\"icon\">🚪</span>\n          <span className=\"text\">Logout</span>\n        </NavLink>\n      </div>\n    </nav>\n  );\n};\n\nexport default SideBar;\n"
+        }
+    ]
+}
