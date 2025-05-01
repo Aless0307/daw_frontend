@@ -18,7 +18,8 @@ const AppLayout = () => {
   
   return (
     <div className="flex flex-col min-h-screen">
-      {user && <Navbar />}
+      {/*user && <Navbar /> aquí comento esto para evitar la duplicidad, ya que ya tengo una que funciona y es responsiva, entonces está mejor,
+      ya que también me permite seguir viendo el funcionamiento si es que quito lo de protected route*/}
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<AccessibleLogin />} />
