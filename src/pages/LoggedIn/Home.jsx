@@ -12,9 +12,11 @@ const Home = () => {
   const { user, logout } = useAuth();
 
   // --- Estado para controlar la expansión de la Sidebar ---
+  // Este estado se compartirá con el componente Sidebar
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   // Función para actualizar el estado de expansión (se pasará a Sidebar)
+  // Sidebar llamará a esta función cuando su estado de hover cambie
   const handleSidebarToggle = (expanded) => {
     setIsSidebarExpanded(expanded);
   };
@@ -142,7 +144,9 @@ const Home = () => {
   const logoutFunction = logout || (() => { console.warn("Logout function not provided") }); // Manejar si logout no está disponible
 
   // Calcula el padding izquierdo para el contenido principal basado en el estado de la sidebar
-  // Usa los anchos definidos en tu SideBar.css
+  // --- ¡IMPORTANTE! ---
+  // Asegúrate de que estos valores (60 y 250) coincidan EXACTAMENTE
+  // con los valores de 'width' definidos en tu archivo SideBar.css
   const sidebarCollapsedWidth = 60; // px
   const sidebarExpandedWidth = 250; // px
   const mainContentPaddingLeft = isSidebarExpanded ? sidebarExpandedWidth : sidebarCollapsedWidth;
@@ -154,11 +158,11 @@ const Home = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Sidebar - Se coloca a la izquierda */}
       {/* Pasa el estado de expansión y el handler para que Sidebar los use */}
-      {/* No aplicamos el ancho aquí, Sidebar lo maneja internamente con sus clases */}
-      {/* Sidebar tiene position: fixed, por lo que no ocupa espacio en el layout flex */}
+      {/* No aplicamos el ancho aquí, Sidebar lo maneja internamente con sus clases CSS */}
+      {/* Sidebar tiene position: fixed, por lo que NO ocupa espacio en el layout flex del contenedor padre */}
       <Sidebar
         isExpanded={isSidebarExpanded} // Pasa el estado de expansión
-        onToggleExpansion={handleSidebarToggle} // Pasa la función para actualizar el estado
+        onToggleExpansion={handleSidebarToggle} // Pasa la función para actualizar el estado (llamada por Sidebar en hover)
         user={user} // Pasa el prop user si Sidebar lo necesita
         logout={logoutFunction} // Pasa el prop logout si Sidebar lo necesita
       /> {/* <-- Añade tu componente Sidebar aquí */}
@@ -166,23 +170,25 @@ const Home = () => {
       {/* Contenedor del Contenido Principal - Ocupa el espacio restante */}
       {/* flex-1 hace que ocupe todo el espacio disponible en el flex container */}
       {/* min-w-0 permite que este contenedor se encoja por debajo de su tamaño de contenido si es necesario */}
-      {/* overflow-x-hidden oculta cualquier contenido horizontal que se desborde */}
-      {/* Añadimos padding-left dinámico para empujar el contenido y que no se solape con la sidebar fija */}
+      {/* overflow-x-hidden oculta cualquier contenido horizontal que se desborde dentro de este contenedor */}
+      {/* Añadimos padding-left dinámico para empujar el contenido y que NO se solape con la sidebar fija */}
       <div
         className="flex-1 min-w-0 overflow-x-hidden"
-        style={{ paddingLeft: `${mainContentPaddingLeft}px`, transition: 'padding-left 0.3s ease' }} // Aplica padding dinámico y transición
+        style={{ paddingLeft: `${mainContentPaddingLeft}px`, transition: 'padding-left 0.3s ease' }} // Aplica padding dinámico y transición suave
       >
         {/* Navbar - Se coloca en la parte superior del contenido principal */}
         {/* El Navbar se ajustará al ancho disponible dentro de este contenedor flex-1 */}
+        {/* No necesita padding-left adicional aquí, ya que su contenedor padre (este div) ya tiene el padding */}
         <Navbar /> {/* <-- Añade tu componente Navbar aquí */}
 
         {/* Hero Section */}
+        {/* El resto del contenido de la página */}
         <div className="relative overflow-hidden">
           <div className="max-w-7xl mx-auto">
             {/* El padding horizontal (px-4, etc.) dentro de main ya maneja el espacio lateral interno */}
-            {/* No necesitas padding-left adicional aquí si el padding del contenedor flex-1 ya lo maneja */}
+            {/* No necesitas padding-left adicional en los elementos internos si el padding del contenedor flex-1 ya lo maneja */}
             <div className="relative z-10 pb-8 sm:pb-16 md:pb-20 lg:w-full lg:pb-28 xl:pb-32">
-              <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
+              <main className="mt-10 mx-auto px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
                 <div className="sm:text-center lg:text-left">
                   <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
                     <span className="block">Bienvenido,</span>

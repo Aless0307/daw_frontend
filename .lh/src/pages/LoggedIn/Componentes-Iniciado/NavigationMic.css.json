@@ -1,0 +1,18 @@
+{
+    "sourceFile": "src/pages/LoggedIn/Componentes-Iniciado/NavigationMic.css",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1746989764508,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1746989764508,
+            "name": "Commit-0",
+            "content": "/* NavigationMic.css */\n.navigation-mic {\n    cursor: help; /* Indica que es para ayuda/navegación */\n    padding: 5px;\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    border-radius: 50%;\n    transition: background-color 0.3s, box-shadow 0.3s;\n    font-size: 1.1rem;\n    width: 28px;\n    height: 28px;\n    border: 1px solid #ccc;\n    background-color: #f0f0f0;\n  }\n  .navigation-mic:hover {\n    background-color: #e0e0e0;\n    box-shadow: 0 0 5px rgba(0,0,0,0.2);\n  }\n  .navigation-mic.listening .mic-icon {\n    color: red;\n    animation: pulseMic 1.2s infinite ease-in-out;\n  }\n  .navigation-mic.mic-error .mic-icon {\n    color: orange;\n  }\n  @keyframes pulseMic {\n    0% { transform: scale(1); opacity: 1; }\n    50% { transform: scale(1.2); opacity: 0.7; }\n    100% { transform: scale(1); opacity: 1; }\n  }"
+        }
+    ]
+}

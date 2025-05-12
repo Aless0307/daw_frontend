@@ -1,0 +1,31 @@
+/* NavigationMic.css */
+.navigation-mic {
+    cursor: help; /* Indica que es para ayuda/navegación */
+    padding: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.3s, box-shadow 0.3s;
+    font-size: 1.1rem;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+  }
+  .navigation-mic:hover {
+    background-color: #e0e0e0;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+  }
+  .navigation-mic.listening .mic-icon {
+    color: red;
+    animation: pulseMic 1.2s infinite ease-in-out;
+  }
+  .navigation-mic.mic-error .mic-icon {
+    color: orange;
+  }
+  @keyframes pulseMic {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+  }
